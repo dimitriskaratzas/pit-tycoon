@@ -2,6 +2,7 @@
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
+[Bb]in/
 [Bb]uild/
 [Bb]uilds/
 [Ll]ogs/
@@ -52,3 +53,8 @@ crashlytics-build.properties
 # OS files
 .DS_Store
 Thumbs.db
+
+# Hand-written standalone Domain test project (outside Assets, not Unity-generated).
+# The *.csproj rule above targets Unity-generated files; re-include ours.
+!tests/**/*.csproj
+
