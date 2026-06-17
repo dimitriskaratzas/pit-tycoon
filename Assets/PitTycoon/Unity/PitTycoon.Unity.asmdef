@@ -2,7 +2,8 @@
     "name": "PitTycoon.Unity",
     "rootNamespace": "PitTycoon.Unity",
     "references": [
-        "PitTycoon.Domain"
+        "PitTycoon.Domain",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

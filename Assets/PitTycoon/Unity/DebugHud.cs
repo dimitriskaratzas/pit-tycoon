@@ -11,6 +11,7 @@ namespace PitTycoon.Unity
     {
         [SerializeField] private FftAudioAnalyzer analyzer;
         [SerializeField] private HypeSystem hype;
+        [SerializeField] private WhirlpoolAbility ability;
 
         private double _lastBeat = -1.0;
         private float _flash;
@@ -65,6 +66,18 @@ namespace PitTycoon.Unity
                 GUI.color = new Color(0.3f, 0.9f, 0.5f, 1f);
                 GUI.Box(new Rect(12, 202, 260f * frac, 22), GUIContent.none);
                 GUI.color = prevHype;
+            }
+
+            if (ability != null)
+            {
+                bool ready = ability.Ready;
+                float cd = ability.CooldownRemaining;
+                string label = ready ? "WHIRLPOOL (Space)" : $"Whirlpool {cd:0.0}s";
+                GUI.enabled = ready;
+                if (GUI.Button(new Rect(12, 234, 200, 30), label)) ability.Fire();
+                GUI.enabled = true;
+                if (ability.LastMultiplier > 1.01f)
+                    GUI.Label(new Rect(220, 240, 120, 20), $"x{ability.LastMultiplier:0.0} ON-BEAT!");
             }
         }
     }
