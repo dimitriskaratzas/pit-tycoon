@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/PitTycoon.Domain.Tests/PitTycoon.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
