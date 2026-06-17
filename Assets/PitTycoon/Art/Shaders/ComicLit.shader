@@ -24,7 +24,7 @@ Shader "PitTycoon/ComicLit"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
-            #pragma multi_compile _ _FORWARD_PLUS
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -73,6 +73,9 @@ Shader "PitTycoon/ComicLit"
 
                 half3 add = 0;
                 #if defined(_ADDITIONAL_LIGHTS)
+                InputData inputData = (InputData)0;
+                inputData.positionWS = IN.positionWS;
+                inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(IN.positionHCS);
                 uint count = GetAdditionalLightsCount();
                 LIGHT_LOOP_BEGIN(count)
                     Light l = GetAdditionalLight(lightIndex, IN.positionWS);

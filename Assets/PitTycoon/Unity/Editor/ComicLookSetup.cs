@@ -64,7 +64,7 @@ namespace PitTycoon.Unity.EditorTools
                 if (mr != null) mr.sharedMaterial = groundMat;
             }
 
-            var crowd = Object.FindFirstObjectByType<CrowdController>();
+            var crowd = Object.FindAnyObjectByType<CrowdController>();
             if (crowd != null)
             {
                 var so = new SerializedObject(crowd);
