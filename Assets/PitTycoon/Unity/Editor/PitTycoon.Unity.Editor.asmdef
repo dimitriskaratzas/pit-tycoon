@@ -3,7 +3,9 @@
     "rootNamespace": "PitTycoon.Unity.EditorTools",
     "references": [
         "PitTycoon.Unity",
-        "PitTycoon.Domain"
+        "PitTycoon.Domain",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime"
     ],
     "includePlatforms": [
         "Editor"
