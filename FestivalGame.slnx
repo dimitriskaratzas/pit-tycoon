@@ -1,0 +1,7 @@
+﻿<Solution>
+  <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="PitTycoon.Domain.csproj" />
+  <Project Path="PitTycoon.Unity.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="PitTycoon.Unity.Editor.csproj" />
+</Solution>

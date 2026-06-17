@@ -21,7 +21,12 @@ namespace PitTycoon.Unity.EditorTools
             EnsureFolder("Assets/Scenes");
             EnsureFolder("Assets/Audio");
 
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
             // Analyzer config asset (created once, then reused/tunable in the Inspector).
+            // IMPORTANT: create/load this AFTER NewScene. NewScene runs an unused-asset
+            // unload pass; a config created beforehand isn't referenced by anything yet, so
+            // it gets unloaded into a destroyed-object "fake null" and wires as None.
             var config = AssetDatabase.LoadAssetAtPath<AudioAnalyzerConfig>(ConfigPath);
             if (config == null)
             {
@@ -29,8 +34,6 @@ namespace PitTycoon.Unity.EditorTools
                 AssetDatabase.CreateAsset(config, ConfigPath);
                 AssetDatabase.SaveAssets();
             }
-
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             // Camera (pulled-back, RTS-ish).
             var camGo = new GameObject("Main Camera");
@@ -70,8 +73,7 @@ namespace PitTycoon.Unity.EditorTools
             }
 
             var analyzer = audioGo.AddComponent<FftAudioAnalyzer>();
-            SetSerializedRef(analyzer, "config", config);
-            SetSerializedRef(analyzer, "source", src);
+            WireRefs(analyzer, ("config", config), ("source", src));
 
             // Crowd.
             var crowdGo = new GameObject("Crowd");
@@ -80,14 +82,14 @@ namespace PitTycoon.Unity.EditorTools
             // Bootstrap.
             var bootGo = new GameObject("Bootstrap");
             var boot = bootGo.AddComponent<GameBootstrap>();
-            SetSerializedRef(boot, "analyzer", analyzer);
-            SetSerializedRef(boot, "crowd", crowd);
+            WireRefs(boot, ("analyzer", analyzer), ("crowd", crowd));
 
             // Debug HUD.
             var hudGo = new GameObject("DebugHud");
             var hud = hudGo.AddComponent<DebugHud>();
-            SetSerializedRef(hud, "analyzer", analyzer);
+            WireRefs(hud, ("analyzer", analyzer));
 
+            EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
 
             string next = clipAssigned
@@ -107,12 +109,21 @@ namespace PitTycoon.Unity.EditorTools
             AssetDatabase.CreateFolder(parent, leaf);
         }
 
-        private static void SetSerializedRef(Object target, string field, Object value)
+        private static void WireRefs(Object target, params (string field, Object value)[] refs)
         {
             var so = new SerializedObject(target);
-            var prop = so.FindProperty(field);
-            prop.objectReferenceValue = value;
+            foreach (var entry in refs)
+            {
+                var prop = so.FindProperty(entry.field);
+                if (prop == null)
+                {
+                    Debug.LogError($"[PitTycoonSetup] Serialized field '{entry.field}' not found on {target.GetType().Name}.");
+                    continue;
+                }
+                prop.objectReferenceValue = entry.value;
+            }
             so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
         }
     }
 }
