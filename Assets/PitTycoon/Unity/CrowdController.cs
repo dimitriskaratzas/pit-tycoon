@@ -18,6 +18,7 @@ namespace PitTycoon.Unity
         [SerializeField] private float beatPop = 0.7f;
         [SerializeField] private float popDecayPerSecond = 2.5f;
         [SerializeField] private float bobSpeed = 7f;
+        [SerializeField] private Material memberMaterial;
 
         private IAudioAnalyzer _analyzer;
         private Transform[] _members;
@@ -66,6 +67,11 @@ namespace PitTycoon.Unity
                 {
                     var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                     go.name = $"Crowd_{r}_{c}";
+                    if (memberMaterial != null)
+                    {
+                        var rend = go.GetComponent<Renderer>();
+                        if (rend != null) rend.sharedMaterial = memberMaterial;
+                    }
                     go.transform.SetParent(transform, false);
                     go.transform.localPosition = new Vector3(
                         c * spacing - offsetX, baseHeight * 0.5f, r * spacing - offsetZ);
