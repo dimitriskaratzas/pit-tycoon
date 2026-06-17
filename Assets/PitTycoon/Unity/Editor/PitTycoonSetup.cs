@@ -6,12 +6,15 @@ using PitTycoon.Unity;
 namespace PitTycoon.Unity.EditorTools
 {
     /// <summary>
-    /// One-click greybox scene builder so the human does minimal manual wiring.
+    /// One-click greybox scene builder for the full M1 loop. Creates the SO assets,
+    /// builds the GameObjects, and wires every serialized reference automatically.
     /// Menu: "Pit Tycoon/Build Greybox Scene".
     /// </summary>
     public static class PitTycoonSetup
     {
-        private const string ConfigPath = "Assets/Settings/AudioAnalyzerConfig.asset";
+        private const string AudioConfigPath = "Assets/Settings/AudioAnalyzerConfig.asset";
+        private const string AbilityPath = "Assets/Settings/AbilityDefinition.asset";
+        private const string UpgradePath = "Assets/Settings/UpgradeDefinition.asset";
         private const string ScenePath = "Assets/Scenes/Greybox.unity";
 
         [MenuItem("Pit Tycoon/Build Greybox Scene")]
@@ -23,19 +26,13 @@ namespace PitTycoon.Unity.EditorTools
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            // Analyzer config asset (created once, then reused/tunable in the Inspector).
-            // IMPORTANT: create/load this AFTER NewScene. NewScene runs an unused-asset
-            // unload pass; a config created beforehand isn't referenced by anything yet, so
-            // it gets unloaded into a destroyed-object "fake null" and wires as None.
-            var config = AssetDatabase.LoadAssetAtPath<AudioAnalyzerConfig>(ConfigPath);
-            if (config == null)
-            {
-                config = ScriptableObject.CreateInstance<AudioAnalyzerConfig>();
-                AssetDatabase.CreateAsset(config, ConfigPath);
-                AssetDatabase.SaveAssets();
-            }
+            // Assets created AFTER NewScene (NewScene's unused-asset unload would otherwise
+            // destroy a freshly-created asset before anything references it -> wires as None).
+            var audioConfig = LoadOrCreate<AudioAnalyzerConfig>(AudioConfigPath);
+            var abilityDef = LoadOrCreate<AbilityDefinition>(AbilityPath);
+            var upgradeDef = LoadOrCreate<UpgradeDefinition>(UpgradePath);
 
-            // Camera (pulled-back, RTS-ish).
+            // Camera.
             var camGo = new GameObject("Main Camera");
             camGo.tag = "MainCamera";
             var cam = camGo.AddComponent<Camera>();
@@ -44,25 +41,24 @@ namespace PitTycoon.Unity.EditorTools
             cam.backgroundColor = new Color(0.06f, 0.06f, 0.09f);
             camGo.AddComponent<AudioListener>();
 
-            // Directional light.
+            // Light.
             var lightGo = new GameObject("Directional Light");
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
             light.intensity = 1.1f;
             lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
 
-            // Ground reference.
+            // Ground.
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
             ground.name = "Ground";
             ground.transform.localScale = new Vector3(4f, 1f, 3f);
 
-            // Audio + analyzer.
+            // Audio + analyzer (SetController owns playback, so playOnAwake = false).
             var audioGo = new GameObject("Audio");
             var src = audioGo.AddComponent<AudioSource>();
-            src.playOnAwake = true;
+            src.playOnAwake = false;
             src.loop = false;
 
-            // Auto-assign a clip if one exists in Assets/Audio (e.g. the bundled sample).
             bool clipAssigned = false;
             string[] clipGuids = AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Audio" });
             if (clipGuids.Length > 0)
@@ -73,31 +69,64 @@ namespace PitTycoon.Unity.EditorTools
             }
 
             var analyzer = audioGo.AddComponent<FftAudioAnalyzer>();
-            WireRefs(analyzer, ("config", config), ("source", src));
+            WireRefs(analyzer, ("config", audioConfig), ("source", src));
 
             // Crowd.
             var crowdGo = new GameObject("Crowd");
             var crowd = crowdGo.AddComponent<CrowdController>();
 
-            // Bootstrap.
-            var bootGo = new GameObject("Bootstrap");
-            var boot = bootGo.AddComponent<GameBootstrap>();
-            WireRefs(boot, ("analyzer", analyzer), ("crowd", crowd));
+            // Systems hub.
+            var sysGo = new GameObject("Systems");
+            var hype = sysGo.AddComponent<HypeSystem>();
+            var ability = sysGo.AddComponent<WhirlpoolAbility>();
+            var economy = sysGo.AddComponent<EconomySystem>();
+            var upgrades = sysGo.AddComponent<UpgradeSystem>();
+            var setController = sysGo.AddComponent<SetController>();
 
-            // Debug HUD.
+            WireRefs(hype, ("analyzer", analyzer));
+            WireRefs(ability, ("definition", abilityDef), ("vfxAnchor", crowdGo.transform));
+            WireRefs(upgrades,
+                ("capacityUpgrade", upgradeDef), ("economy", economy), ("hype", hype), ("crowd", crowd));
+            WireRefs(setController,
+                ("source", src), ("hype", hype), ("economy", economy), ("crowd", crowd));
+
+            // HUD (expanded DebugHud).
             var hudGo = new GameObject("DebugHud");
             var hud = hudGo.AddComponent<DebugHud>();
-            WireRefs(hud, ("analyzer", analyzer));
+            WireRefs(hud,
+                ("analyzer", analyzer), ("hype", hype), ("ability", ability),
+                ("economy", economy), ("setController", setController), ("upgrades", upgrades));
+
+            // Composition root.
+            var bootGo = new GameObject("Bootstrap");
+            var boot = bootGo.AddComponent<GameBootstrap>();
+            WireRefs(boot,
+                ("analyzer", analyzer), ("crowd", crowd), ("hype", hype), ("ability", ability),
+                ("economy", economy), ("upgrades", upgrades), ("setController", setController));
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
 
             string next = clipAssigned
-                ? "A clip from Assets/Audio was auto-assigned.\n\nJust press Play: the crowd should bob with intensity and pop on beats."
-                : "No clip found in Assets/Audio.\n\nNext:\n1. Put an audio file in Assets/Audio.\n" +
-                  "2. Select the 'Audio' object and drag your clip into AudioSource > AudioClip.\n" +
-                  "3. Press Play.";
-            EditorUtility.DisplayDialog("Pit Tycoon", "Greybox scene built and wired at:\n" + ScenePath + "\n\n" + next, "OK");
+                ? "A clip from Assets/Audio was auto-assigned.\n\nPress Play:\n" +
+                  "- Crowd bobs with intensity, pops on beats.\n" +
+                  "- Hype meter fills; press SPACE on-beat to spike it (whirlpool).\n" +
+                  "- When the track ends, hype banks to cash (coins fly), then the\n" +
+                  "  intermission shop appears — buy capacity and Start Next Set."
+                : "No clip found in Assets/Audio. Put a .wav/.ogg/.mp3 there and rebuild.";
+            EditorUtility.DisplayDialog("Pit Tycoon", "Greybox loop scene built at:\n" + ScenePath + "\n\n" + next, "OK");
+        }
+
+        private static T LoadOrCreate<T>(string path) where T : ScriptableObject
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset == null)
+            {
+                asset = ScriptableObject.CreateInstance<T>();
+                AssetDatabase.CreateAsset(asset, path);
+                AssetDatabase.SaveAssets();
+            }
+            return asset;
         }
 
         private static void EnsureFolder(string path)
