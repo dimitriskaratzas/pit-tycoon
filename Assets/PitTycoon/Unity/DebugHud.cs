@@ -14,6 +14,7 @@ namespace PitTycoon.Unity
         [SerializeField] private WhirlpoolAbility ability;
         [SerializeField] private EconomySystem economy;
         [SerializeField] private SetController setController;
+        [SerializeField] private UpgradeSystem upgrades;
 
         private double _lastBeat = -1.0;
         private float _flash;
@@ -90,6 +91,27 @@ namespace PitTycoon.Unity
                 GUI.Label(new Rect(rx, 34, 200, 22), $"Set {setController.SetNumber} — {setController.Current}");
                 if (setController.Current == SetController.Phase.Intermission && setController.LastCashEarned > 0)
                     GUI.Label(new Rect(rx, 56, 200, 22), $"Banked: +${setController.LastCashEarned}");
+            }
+
+            if (setController != null && setController.Current == SetController.Phase.Intermission
+                && upgrades != null)
+            {
+                const float px = 12, py = 290, pw = 320;
+                GUI.Box(new Rect(px, py, pw, 110), "INTERMISSION");
+                var upg = upgrades.CapacityUpgrade;
+                if (upg != null)
+                {
+                    bool afford = upgrades.CanAfford(upg);
+                    GUI.enabled = afford;
+                    if (GUI.Button(new Rect(px + 10, py + 26, pw - 20, 30),
+                            $"Buy {upg.DisplayName} (${upg.Cost})  +{upg.AddColumns}x{upg.AddRows} crowd"))
+                        upgrades.TryPurchase(upg);
+                    GUI.enabled = true;
+                    if (!afford)
+                        GUI.Label(new Rect(px + 10, py + 58, pw - 20, 20), "Not enough cash.");
+                }
+                if (GUI.Button(new Rect(px + 10, py + 76, pw - 20, 28), "Start Next Set ▶"))
+                    setController.StartNextSet();
             }
         }
     }
