@@ -54,6 +54,9 @@ crashlytics-build.properties
 .DS_Store
 Thumbs.db
 
+# Tooling caches
+.serena/
+
 # Hand-written standalone Domain test project (outside Assets, not Unity-generated).
 # The *.csproj rule above targets Unity-generated files; re-include ours.
 !tests/**/*.csproj

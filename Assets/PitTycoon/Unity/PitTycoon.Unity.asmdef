@@ -1,0 +1,16 @@
+{
+    "name": "PitTycoon.Unity",
+    "rootNamespace": "PitTycoon.Unity",
+    "references": [
+        "PitTycoon.Domain"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
