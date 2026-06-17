@@ -79,8 +79,19 @@ namespace PitTycoon.Unity
                 GUI.enabled = ready;
                 if (GUI.Button(new Rect(12, 234, 200, 30), label)) ability.Fire();
                 GUI.enabled = true;
-                if (ability.LastMultiplier > 1.01f)
-                    GUI.Label(new Rect(220, 240, 120, 20), $"x{ability.LastMultiplier:0.0} ON-BEAT!");
+                if (ability.LastQuality != WhirlpoolAbility.HitQuality.None)
+                {
+                    Color prevQ = GUI.color;
+                    GUI.color = ability.LastQuality switch
+                    {
+                        WhirlpoolAbility.HitQuality.Perfect => new Color(0.3f, 1f, 0.4f),
+                        WhirlpoolAbility.HitQuality.Good => new Color(1f, 0.9f, 0.3f),
+                        _ => new Color(0.7f, 0.7f, 0.7f),
+                    };
+                    string q = ability.LastQuality.ToString().ToUpperInvariant();
+                    GUI.Label(new Rect(220, 238, 170, 22), $"{q}  x{ability.LastMultiplier:0.0}");
+                    GUI.color = prevQ;
+                }
             }
 
             float rx = Screen.width - 220;

@@ -11,13 +11,15 @@ namespace PitTycoon.Unity
     {
         public string Id = "whirlpool";
         public string DisplayName = "Whirlpool";
-        [Tooltip("Hype added on fire, before the on-beat multiplier.")]
-        public float BaseSpike = 12f;
-        [Tooltip("Multiplier when fired exactly on a beat (falls to 1.0 at the window edge).")]
-        [Min(1f)] public float MaxMultiplier = 3f;
-        [Tooltip("Seconds either side of a beat that still count as on-beat.")]
-        public float ToleranceSeconds = 0.12f;
-        [Tooltip("Seconds between fires.")]
-        public float Cooldown = 1.2f;
+        [Tooltip("Hype added off-beat (the floor). On-beat multiplies this up to MaxMultiplier, " +
+                 "so keep it small for 'off-beat does little'.")]
+        public float BaseSpike = 4f;
+        [Tooltip("Multiplier when fired exactly on a beat (falls to 1.0 at the window edge). " +
+                 "A wide spread (e.g. 6) makes timing clearly worth it.")]
+        [Min(1f)] public float MaxMultiplier = 6f;
+        [Tooltip("Seconds either side of a beat that still count as on-beat. Smaller = stricter timing.")]
+        public float ToleranceSeconds = 0.1f;
+        [Tooltip("Seconds between fires. ~one beat (0.5s at 120 BPM) lets you tap on the rhythm.")]
+        public float Cooldown = 0.5f;
     }
 }
