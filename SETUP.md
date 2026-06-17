@@ -59,3 +59,42 @@ Select `Assets/Settings/AudioAnalyzerConfig.asset` and adjust in the Inspector:
 - `ThresholdMultiplier` — lower = more (more sensitive) beats.
 - `MinBeatIntervalSeconds` — minimum gap between beats (raise to suppress doubles).
 - `IntensityGain` — scale to match your track's loudness so the bar uses the full 0..1 range.
+
+## Milestone 2a — Comic look (cel-shading pipeline)
+
+Prereq: the M1 greybox scene exists (run **Pit Tycoon → Build Greybox Scene** first).
+
+1. With `Assets/Scenes/Greybox.unity` open, run **Pit Tycoon → Apply Comic Look (M2a)**.
+   This generates the ramp, materials, and `Assets/Settings/ComicLook.asset` Volume profile,
+   assigns ground/crowd materials, and adds a Global Volume + three accent lights.
+
+2. Attach the two fullscreen render features (one-time, on the PC renderer):
+   - Select `Assets/Settings/PC_Renderer.asset`.
+   - **Add Renderer Feature → Full Screen Pass Renderer Feature**. Name it `Halftone`.
+     - Pass Material: `Assets/PitTycoon/Art/Materials/HalftoneMat.mat`
+     - Injection Point: **Before Rendering Post Processing**
+     - Requirements: **Depth** (it reads scene depth to skip the sky)
+     - Fetch Color Buffer: **on**
+   - **Add Renderer Feature → Full Screen Pass Renderer Feature** again. Name it `Outline`.
+     - Pass Material: `Assets/PitTycoon/Art/Materials/OutlineMat.mat`
+     - Injection Point: **Before Rendering Post Processing**
+     - Requirements: **Depth, Normal** (edge detect samples both)
+     - Fetch Color Buffer: **on**
+   - Order in the list: `Halftone` **above** `Outline` (ink draws over the dots).
+
+3. Press **Play**. Expected: stepped (banded) lighting on ground/crowd, inked outlines on
+   silhouettes, halftone dots concentrated in shadow areas, a warm/cool accent tint, and the
+   full M1 loop still plays.
+
+### Tuning (Inspector dials)
+- `ComicRamp` hard steps: re-run the menu after editing `steps` in `ComicLookSetup` (default 3).
+- `HalftoneMat`: `Dot Scale` (bigger = larger dots), `Shadow Threshold` (higher = more dots), `Ink Color`.
+- `OutlineMat`: `Line Thickness`, `Depth/Normal Sensitivity` (raise if edges are missing, lower if noisy).
+- `ComicLook` Volume: `Bloom` intensity (accent glow), `ColorAdjustments` saturation (the "color-pop" dial).
+- Accent lights: color/intensity/position of `Accent Amber/Magenta/Cyan`.
+
+### If outlines don't appear
+The Outline feature needs `_CameraNormalsTexture`. If lines are missing, confirm the Outline
+feature's Requirements includes **Normal**; if it still fails on this URP version, leave
+Requirements = Depth+Normal (URP generates the DepthNormals prepass when a feature requests
+Normal). The ComicLit shader's `DepthNormals` pass must compile for objects to appear there.
