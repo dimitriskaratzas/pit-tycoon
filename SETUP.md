@@ -21,12 +21,31 @@ Unity 6 LTS (6000.0.x), URP. The Domain layer is already tested via `dotnet test
      (This is the first time the C# scripts get compiled, so this is where we catch issues.)
 
 4. **Build the greybox scene.** Menu bar: **Pit Tycoon → Build Greybox Scene**.
-   A dialog confirms it created `Assets/Scenes/Greybox.unity`, wired everything, and
+   A dialog confirms it created `Assets/Scenes/Greybox.unity`, wired the full loop, and
    auto-assigned the bundled sample track (`Assets/Audio/sample_beat.wav`) to the AudioSource.
+   It also creates `Assets/Settings/AbilityDefinition.asset` and
+   `Assets/Settings/UpgradeDefinition.asset` (tunable in the Inspector).
+   - This project is **new-Input-System-only** (`Active Input Handling = Input System Package`);
+     the ability reads the keyboard via `UnityEngine.InputSystem`. The first compile after
+     pulling resolves the `Unity.InputSystem` asmdef reference automatically.
 
-5. **Play.** Press the Play button. Expected:
-   - The capsule crowd bobs with the music's intensity and pops on beats.
-   - The DebugHud (top-left) shows the intensity bar and flashes **BEAT** on detected beats.
+5. **Play the loop.** Press Play. Expected, in order:
+   - The capsule crowd bobs with intensity and pops on beats; the **Hype** meter fills live.
+   - Press **SPACE** (or click **WHIRLPOOL**) — fire *on the beat* for an `xN ON-BEAT!`
+     multiplier and a bigger whirlpool; hype visibly jumps. Off-beat does little.
+   - When the track ends, hype **banks to cash** (coins fly up) and the **INTERMISSION**
+     panel appears (top-left).
+   - Click **Buy Grounds Expansion** (if affordable), then **Start Next Set ▶** — the next
+     set's crowd is visibly **bigger/denser** and the hype ceiling is higher.
+
+   The DebugHud also shows the intensity bar and a **BEAT** flash for tuning beat detection.
+
+### Tuning the loop
+Select these assets and adjust in the Inspector (no recompile):
+- `Assets/Settings/AbilityDefinition.asset` — `BaseSpike`, `MaxMultiplier`, `ToleranceSeconds`, `Cooldown`.
+- `Assets/Settings/UpgradeDefinition.asset` — `Cost`, `AddColumns`/`AddRows`, `CeilingDelta`.
+- On the **Systems** object: `HypeSystem` (`StartingCeiling`, `PassiveRatePerSecond`) and
+  `EconomySystem` (`StartingCash`, `PeakWeight`, `AvgWeight`) control fill speed and payout.
 
 ### Using your own track instead
 `Assets/Audio/sample_beat.wav` is a procedurally-generated, royalty-free placeholder
