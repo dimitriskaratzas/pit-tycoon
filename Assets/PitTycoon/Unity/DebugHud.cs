@@ -10,6 +10,7 @@ namespace PitTycoon.Unity
     public sealed class DebugHud : MonoBehaviour
     {
         [SerializeField] private FftAudioAnalyzer analyzer;
+        [SerializeField] private HypeSystem hype;
 
         private double _lastBeat = -1.0;
         private float _flash;
@@ -54,6 +55,17 @@ namespace PitTycoon.Unity
             GUI.color = prev;
 
             GUI.Label(new Rect(12, 152, 320, 20), $"Last beat dsp: {_lastBeat:0.00}");
+
+            if (hype != null)
+            {
+                float frac = hype.Ceiling > 0f ? Mathf.Clamp01(hype.Current / hype.Ceiling) : 0f;
+                GUI.Label(new Rect(12, 180, 320, 20), $"Hype: {hype.Current:0} / {hype.Ceiling:0}");
+                GUI.Box(new Rect(12, 202, 260, 22), GUIContent.none);
+                Color prevHype = GUI.color;
+                GUI.color = new Color(0.3f, 0.9f, 0.5f, 1f);
+                GUI.Box(new Rect(12, 202, 260f * frac, 22), GUIContent.none);
+                GUI.color = prevHype;
+            }
         }
     }
 }
