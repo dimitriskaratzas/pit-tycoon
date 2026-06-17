@@ -41,4 +41,11 @@ namespace PitTycoon.Domain
         public string UpgradeId { get; }
         public UpgradePurchased(string upgradeId) { UpgradeId = upgradeId; }
     }
+
+    /// <summary>Raised when a new set begins (live phase starts).</summary>
+    public readonly struct SetStarted
+    {
+        public int SetNumber { get; }
+        public SetStarted(int setNumber) { SetNumber = setNumber; }
+    }
 }
