@@ -21,15 +21,19 @@ Unity 6 LTS (6000.0.x), URP. The Domain layer is already tested via `dotnet test
      (This is the first time the C# scripts get compiled, so this is where we catch issues.)
 
 4. **Build the greybox scene.** Menu bar: **Pit Tycoon → Build Greybox Scene**.
-   A dialog confirms it created `Assets/Scenes/Greybox.unity` and wired everything.
+   A dialog confirms it created `Assets/Scenes/Greybox.unity`, wired everything, and
+   auto-assigned the bundled sample track (`Assets/Audio/sample_beat.wav`) to the AudioSource.
 
-5. **Add audio.** Drop an audio file (`.wav` / `.ogg` / `.mp3`) into `Assets/Audio/`.
-   Select the **Audio** GameObject in the Hierarchy; drag your clip into
-   **Inspector → Audio Source → AudioClip**.
-
-6. **Play.** Press the Play button. Expected:
+5. **Play.** Press the Play button. Expected:
    - The capsule crowd bobs with the music's intensity and pops on beats.
    - The DebugHud (top-left) shows the intensity bar and flashes **BEAT** on detected beats.
+
+### Using your own track instead
+`Assets/Audio/sample_beat.wav` is a procedurally-generated, royalty-free placeholder
+(120 BPM, kick + hats + bass) — regenerate it any time with
+`dotnet run tools/audio-gen/GenerateSampleTrack.cs` from the repo root.
+To use real music: drop a `.wav`/`.ogg`/`.mp3` into `Assets/Audio/`, select the **Audio**
+GameObject, and set **Audio Source → AudioClip** to your file.
 
 ## Tuning beat detection
 Select `Assets/Settings/AudioAnalyzerConfig.asset` and adjust in the Inspector:

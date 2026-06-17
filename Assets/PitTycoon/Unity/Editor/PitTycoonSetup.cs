@@ -58,6 +58,17 @@ namespace PitTycoon.Unity.EditorTools
             var src = audioGo.AddComponent<AudioSource>();
             src.playOnAwake = true;
             src.loop = false;
+
+            // Auto-assign a clip if one exists in Assets/Audio (e.g. the bundled sample).
+            bool clipAssigned = false;
+            string[] clipGuids = AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Audio" });
+            if (clipGuids.Length > 0)
+            {
+                var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(AssetDatabase.GUIDToAssetPath(clipGuids[0]));
+                src.clip = clip;
+                clipAssigned = clip != null;
+            }
+
             var analyzer = audioGo.AddComponent<FftAudioAnalyzer>();
             SetSerializedRef(analyzer, "config", config);
             SetSerializedRef(analyzer, "source", src);
@@ -78,13 +89,13 @@ namespace PitTycoon.Unity.EditorTools
             SetSerializedRef(hud, "analyzer", analyzer);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
-            EditorUtility.DisplayDialog(
-                "Pit Tycoon",
-                "Greybox scene built and wired at:\n" + ScenePath +
-                "\n\nNext:\n1. Put an audio file in Assets/Audio.\n" +
-                "2. Select the 'Audio' object and drag your clip into AudioSource > AudioClip.\n" +
-                "3. Press Play. The crowd should bob with intensity and pop on beats.",
-                "OK");
+
+            string next = clipAssigned
+                ? "A clip from Assets/Audio was auto-assigned.\n\nJust press Play: the crowd should bob with intensity and pop on beats."
+                : "No clip found in Assets/Audio.\n\nNext:\n1. Put an audio file in Assets/Audio.\n" +
+                  "2. Select the 'Audio' object and drag your clip into AudioSource > AudioClip.\n" +
+                  "3. Press Play.";
+            EditorUtility.DisplayDialog("Pit Tycoon", "Greybox scene built and wired at:\n" + ScenePath + "\n\n" + next, "OK");
         }
 
         private static void EnsureFolder(string path)
