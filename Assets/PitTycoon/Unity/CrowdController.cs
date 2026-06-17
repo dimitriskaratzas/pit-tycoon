@@ -36,6 +36,15 @@ namespace PitTycoon.Unity
             if (_analyzer != null) _analyzer.BeatDetected -= OnBeat;
         }
 
+        /// <summary>Increase grid size (capacity upgrade). Visible after the next Build().</summary>
+        public void Grow(int addColumns, int addRows)
+        {
+            columns = Mathf.Clamp(columns + addColumns, 1, 40);
+            rows = Mathf.Clamp(rows + addRows, 1, 30);
+        }
+
+        public int MemberCount => columns * rows;
+
         private void OnBeat(BeatInfo beat)
         {
             _pop = Mathf.Max(_pop, beatPop * Mathf.Clamp01(0.4f + beat.Strength));

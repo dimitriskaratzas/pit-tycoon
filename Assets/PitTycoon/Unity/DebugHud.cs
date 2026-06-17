@@ -12,6 +12,8 @@ namespace PitTycoon.Unity
         [SerializeField] private FftAudioAnalyzer analyzer;
         [SerializeField] private HypeSystem hype;
         [SerializeField] private WhirlpoolAbility ability;
+        [SerializeField] private EconomySystem economy;
+        [SerializeField] private SetController setController;
 
         private double _lastBeat = -1.0;
         private float _flash;
@@ -78,6 +80,16 @@ namespace PitTycoon.Unity
                 GUI.enabled = true;
                 if (ability.LastMultiplier > 1.01f)
                     GUI.Label(new Rect(220, 240, 120, 20), $"x{ability.LastMultiplier:0.0} ON-BEAT!");
+            }
+
+            float rx = Screen.width - 220;
+            if (economy != null)
+                GUI.Label(new Rect(rx, 12, 200, 22), $"Cash: ${economy.Cash}");
+            if (setController != null)
+            {
+                GUI.Label(new Rect(rx, 34, 200, 22), $"Set {setController.SetNumber} — {setController.Current}");
+                if (setController.Current == SetController.Phase.Intermission && setController.LastCashEarned > 0)
+                    GUI.Label(new Rect(rx, 56, 200, 22), $"Banked: +${setController.LastCashEarned}");
             }
         }
     }
