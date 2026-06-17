@@ -4,14 +4,21 @@ using PitTycoon.Domain;
 namespace PitTycoon.Unity
 {
     /// <summary>
-    /// Single composition root (the "Startup.cs"): constructs the EventBus, wires
-    /// the analyzer to the crowd, and bridges analyzer beats onto the bus for future
-    /// consumers (hype, abilities). No singletons; everything is referenced explicitly.
+    /// Single composition root (the "Startup.cs"): constructs the EventBus, bridges
+    /// analyzer beats onto it, and Initialize(bus)s every system. Systems get their
+    /// peer references via serialized fields (wired by the editor script), so nothing
+    /// uses FindObjectOfType or singletons. Order: all Awakes (wiring) run before any
+    /// Start (SetController auto-starts set 1 in its Start).
     /// </summary>
     public sealed class GameBootstrap : MonoBehaviour
     {
         [SerializeField] private FftAudioAnalyzer analyzer;
         [SerializeField] private CrowdController crowd;
+        [SerializeField] private HypeSystem hype;
+        [SerializeField] private WhirlpoolAbility ability;
+        [SerializeField] private EconomySystem economy;
+        [SerializeField] private UpgradeSystem upgrades;
+        [SerializeField] private SetController setController;
 
         public EventBus Bus { get; private set; }
 
@@ -19,22 +26,23 @@ namespace PitTycoon.Unity
         {
             Bus = new EventBus();
 
-            if (analyzer == null)
+            if (analyzer == null || crowd == null || hype == null || ability == null
+                || economy == null || upgrades == null || setController == null)
             {
-                Debug.LogError("GameBootstrap: analyzer not assigned.", this);
-                return;
-            }
-            if (crowd == null)
-            {
-                Debug.LogError("GameBootstrap: crowd not assigned.", this);
+                Debug.LogError("GameBootstrap: one or more system references are not assigned.", this);
                 return;
             }
 
-            // Bridge raw analyzer beats onto the domain EventBus (future consumers subscribe here).
+            // Bridge raw analyzer beats onto the bus (ability, future consumers subscribe here).
             analyzer.BeatDetected += OnBeat;
 
             crowd.Initialize(analyzer);
-            crowd.Build();
+            economy.Initialize();
+            hype.Initialize(Bus);
+            ability.Initialize(Bus);
+            upgrades.Initialize(Bus);
+            setController.Initialize(Bus);
+            // SetController.Start() (after all Awakes) kicks off set 1.
         }
 
         private void OnDestroy()

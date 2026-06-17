@@ -33,6 +33,9 @@ sysinfo.txt
 *.csproj
 *.unityproj
 *.sln
+# Unity/IDE-generated solution (references the gitignored *.csproj). The
+# hand-written PitTycoon.Domain.slnx used by `dotnet test` stays tracked.
+FestivalGame.slnx
 *.suo
 *.tmp
 *.user
