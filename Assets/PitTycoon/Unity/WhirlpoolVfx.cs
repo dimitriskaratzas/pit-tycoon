@@ -9,6 +9,9 @@ namespace PitTycoon.Unity
     /// </summary>
     public sealed class WhirlpoolVfx : MonoBehaviour
     {
+        /// <summary>Optional comic material applied to spawned whirlpools (set by BeatVfxController).</summary>
+        public static Material OverrideMaterial;
+
         private float _life;
         private float _maxLife = 0.7f;
         private float _maxScale = 4f;
@@ -21,6 +24,11 @@ namespace PitTycoon.Unity
             go.name = "WhirlpoolVFX";
             var col = go.GetComponent<Collider>();
             if (col != null) Destroy(col);
+            if (OverrideMaterial != null)
+            {
+                var rend = go.GetComponent<Renderer>();
+                if (rend != null) rend.sharedMaterial = OverrideMaterial;
+            }
             go.transform.position = pos + Vector3.up * 0.1f;
             go.transform.localScale = new Vector3(0.1f, 0.05f, 0.1f);
             var fx = go.AddComponent<WhirlpoolVfx>();

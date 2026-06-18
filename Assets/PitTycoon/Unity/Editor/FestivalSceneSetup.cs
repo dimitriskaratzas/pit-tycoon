@@ -62,6 +62,8 @@ namespace PitTycoon.Unity.EditorTools
                 ReparentLight("Accent Cyan", truss.transform, new Vector3(0f, 4f, 9f));
             }
 
+            WireBeatVfx(lit, stage);
+
             var active = EditorSceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(active);
             EditorSceneManager.SaveScene(active);
@@ -70,6 +72,39 @@ namespace PitTycoon.Unity.EditorTools
             EditorUtility.DisplayDialog("Pit Tycoon",
                 "Festival scene built. Press Play — the crowd should be figures that hop, " +
                 "with stage/truss/PA/banner behind them. Tune crowd hop on CrowdController if needed.", "OK");
+        }
+
+        private static void WireBeatVfx(Shader lit, GameObject stage)
+        {
+            var whirlMat = LoadOrCreateMat($"{MatDir}/WhirlpoolMat.mat", lit, new Color(0.21f, 0.79f, 0.88f));
+            var coinMat = LoadOrCreateMat($"{MatDir}/CoinMat.mat", lit, new Color(1f, 0.69f, 0.24f));
+
+            var systems = GameObject.Find("Systems");
+            if (systems == null) return;
+            var ctrl = systems.GetComponent<BeatVfxController>();
+            if (ctrl == null) ctrl = systems.AddComponent<BeatVfxController>();
+
+            var cso = new SerializedObject(ctrl);
+            SetRef(cso, "stageAnchor", stage != null ? stage.transform : null);
+            SetRef(cso, "whirlpoolMaterial", whirlMat);
+            SetRef(cso, "coinMaterial", coinMat);
+            cso.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(ctrl);
+
+            var boot = Object.FindAnyObjectByType<GameBootstrap>();
+            if (boot != null)
+            {
+                var bso = new SerializedObject(boot);
+                SetRef(bso, "beatVfx", ctrl);
+                bso.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(boot);
+            }
+        }
+
+        private static void SetRef(SerializedObject so, string field, Object value)
+        {
+            var prop = so.FindProperty(field);
+            if (prop != null) prop.objectReferenceValue = value;
         }
 
         private static GameObject BuildFigurePrefab(Material crowdMat)

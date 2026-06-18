@@ -117,3 +117,21 @@ Prereq: M1 scene built and M2a comic look applied (so the accent lights + ComicL
 - `Beat Pop` — extra hop on detected beats.
 - `Rotation Jitter` / `Scale Jitter` — per-figure variety (0 = uniform).
 - `Member Prefab` — the crowd-figure prefab (auto-wired by the menu; capsule fallback if cleared).
+
+## Milestone 2c — Manga beat-VFX
+
+Prereq: M2a + M2b applied (comic look + festival scene).
+
+1. Pull M2c, let Unity recompile (new VFX scripts).
+2. With `Greybox.unity` open, re-run **Pit Tycoon → Build Festival Scene (M2b)** — it now also
+   adds `BeatVfxController` to `Systems`, wires the stage anchor + whirlpool/coin materials, and
+   points `GameBootstrap` at it.
+3. Press **Play**. Expected: big beats throw a shockwave ring off the stage + an onomatopoeia
+   pop (DON!/POW!); a PERFECT whirlpool throws a "POW!"; the whirlpool + coins read comic.
+
+### Tuning (BeatVfxController on the Systems object)
+- `Strength Threshold` — how loud a beat must be to fire (lower = more pops).
+- `Multiplier Threshold` — how good an ability hit must be for its POW! (lower = more).
+- `Min Interval` — seconds between big-beat pops (raise to thin them out).
+- `Shockwave Radius` — how far the ring expands.
+- `Whirlpool Material` / `Coin Material` — the comic accent materials.
