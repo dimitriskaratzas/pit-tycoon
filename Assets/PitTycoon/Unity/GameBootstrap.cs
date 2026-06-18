@@ -15,7 +15,7 @@ namespace PitTycoon.Unity
         [SerializeField] private FftAudioAnalyzer analyzer;
         [SerializeField] private CrowdController crowd;
         [SerializeField] private HypeSystem hype;
-        [SerializeField] private WhirlpoolAbility ability;
+        [SerializeField] private AbilitySystem abilities;
         [SerializeField] private EconomySystem economy;
         [SerializeField] private UpgradeSystem upgrades;
         [SerializeField] private SetController setController;
@@ -27,7 +27,7 @@ namespace PitTycoon.Unity
         {
             Bus = new EventBus();
 
-            if (analyzer == null || crowd == null || hype == null || ability == null
+            if (analyzer == null || crowd == null || hype == null || abilities == null
                 || economy == null || upgrades == null || setController == null || beatVfx == null)
             {
                 Debug.LogError("GameBootstrap: one or more system references are not assigned.", this);
@@ -40,7 +40,7 @@ namespace PitTycoon.Unity
             crowd.Initialize(analyzer);
             economy.Initialize();
             hype.Initialize(Bus);
-            ability.Initialize(Bus);
+            abilities.Initialize(Bus);
             upgrades.Initialize(Bus);
             setController.Initialize(Bus);
             beatVfx.Initialize(Bus);

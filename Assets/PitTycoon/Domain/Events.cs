@@ -48,4 +48,11 @@ namespace PitTycoon.Domain
         public int SetNumber { get; }
         public SetStarted(int setNumber) { SetNumber = setNumber; }
     }
+
+    /// <summary>Raised when an ability is purchased in the intermission shop.</summary>
+    public readonly struct AbilityUnlocked
+    {
+        public string AbilityId { get; }
+        public AbilityUnlocked(string abilityId) { AbilityId = abilityId; }
+    }
 }

@@ -11,7 +11,7 @@ namespace PitTycoon.Unity
     {
         [SerializeField] private FftAudioAnalyzer analyzer;
         [SerializeField] private HypeSystem hype;
-        [SerializeField] private WhirlpoolAbility ability;
+        [SerializeField] private AbilitySystem abilities;
         [SerializeField] private EconomySystem economy;
         [SerializeField] private SetController setController;
         [SerializeField] private UpgradeSystem upgrades;
@@ -71,25 +71,31 @@ namespace PitTycoon.Unity
                 GUI.color = prevHype;
             }
 
-            if (ability != null)
+            if (abilities != null && setController != null
+                && setController.Current == SetController.Phase.Live)
             {
-                bool ready = ability.Ready;
-                float cd = ability.CooldownRemaining;
-                string label = ready ? "WHIRLPOOL (Space)" : $"Whirlpool {cd:0.0}s";
-                GUI.enabled = ready;
-                if (GUI.Button(new Rect(12, 234, 200, 30), label)) ability.Fire();
-                GUI.enabled = true;
-                if (ability.LastQuality != WhirlpoolAbility.HitQuality.None)
+                float ay = 234f;
+                foreach (var a in abilities.Abilities)
+                {
+                    if (!a.Owned) continue;
+                    var def = abilities.DefinitionOf(a);
+                    bool ready = a.CanFire;
+                    string label = ready ? def.DisplayName : $"{def.DisplayName} {a.CooldownRemaining:0.0}s";
+                    GUI.enabled = ready;
+                    if (GUI.Button(new Rect(12, ay, 200, 28), label)) abilities.TryFire(a);
+                    GUI.enabled = true;
+                    ay += 32f;
+                }
+                if (abilities.LastQuality != HitQuality.None)
                 {
                     Color prevQ = GUI.color;
-                    GUI.color = ability.LastQuality switch
+                    GUI.color = abilities.LastQuality switch
                     {
-                        WhirlpoolAbility.HitQuality.Perfect => new Color(0.3f, 1f, 0.4f),
-                        WhirlpoolAbility.HitQuality.Good => new Color(1f, 0.9f, 0.3f),
+                        HitQuality.Perfect => new Color(0.3f, 1f, 0.4f),
+                        HitQuality.Good => new Color(1f, 0.9f, 0.3f),
                         _ => new Color(0.7f, 0.7f, 0.7f),
                     };
-                    string q = ability.LastQuality.ToString().ToUpperInvariant();
-                    GUI.Label(new Rect(220, 238, 170, 22), $"{q}  x{ability.LastMultiplier:0.0}");
+                    GUI.Label(new Rect(220, 238, 180, 22), abilities.LastQuality.ToString().ToUpperInvariant());
                     GUI.color = prevQ;
                 }
             }
@@ -108,7 +114,7 @@ namespace PitTycoon.Unity
                 && upgrades != null)
             {
                 const float px = 12, py = 290, pw = 320;
-                GUI.Box(new Rect(px, py, pw, 110), "INTERMISSION");
+                GUI.Box(new Rect(px, py, pw, 200), "INTERMISSION");
                 var upg = upgrades.CapacityUpgrade;
                 if (upg != null)
                 {
@@ -123,6 +129,22 @@ namespace PitTycoon.Unity
                 }
                 if (GUI.Button(new Rect(px + 10, py + 76, pw - 20, 28), "Start Next Set ▶"))
                     setController.StartNextSet();
+
+                float by = py + 112f;
+                if (abilities != null)
+                {
+                    foreach (var a in abilities.Abilities)
+                    {
+                        if (a.Owned) continue;
+                        var def = abilities.DefinitionOf(a);
+                        bool afford = abilities.CanAfford(def);
+                        GUI.enabled = afford;
+                        if (GUI.Button(new Rect(px + 10, by, pw - 20, 26), $"Buy {def.DisplayName} (${def.Cost})"))
+                            abilities.TryUnlock(def);
+                        GUI.enabled = true;
+                        by += 30f;
+                    }
+                }
             }
         }
     }
