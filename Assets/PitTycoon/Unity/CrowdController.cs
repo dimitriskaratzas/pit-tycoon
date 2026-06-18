@@ -54,6 +54,12 @@ namespace PitTycoon.Unity
             _pop = Mathf.Max(_pop, beatPop * Mathf.Clamp01(0.4f + beat.Strength));
         }
 
+        /// <summary>One-shot crowd jolt (an ability fired). Visible on the next Update.</summary>
+        public void Pop(float strength)
+        {
+            _pop = Mathf.Max(_pop, strength);
+        }
+
         /// <summary>Build (or rebuild) the greybox crowd grid as child capsules.</summary>
         public void Build()
         {
