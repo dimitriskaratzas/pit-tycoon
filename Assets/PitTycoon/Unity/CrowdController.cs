@@ -19,6 +19,9 @@ namespace PitTycoon.Unity
         [SerializeField] private float popDecayPerSecond = 2.5f;
         [SerializeField] private float bobSpeed = 7f;
         [SerializeField] private Material memberMaterial;
+        [SerializeField] private GameObject memberPrefab;
+        [SerializeField] private float rotationJitter = 18f;
+        [SerializeField] private float scaleJitter = 0.12f;
 
         private IAudioAnalyzer _analyzer;
         private Transform[] _members;
@@ -65,16 +68,26 @@ namespace PitTycoon.Unity
             {
                 for (int c = 0; c < columns; c++)
                 {
-                    var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                    go.name = $"Crowd_{r}_{c}";
-                    if (memberMaterial != null)
+                    GameObject go;
+                    if (memberPrefab != null)
                     {
-                        var rend = go.GetComponent<Renderer>();
-                        if (rend != null) rend.sharedMaterial = memberMaterial;
+                        go = Instantiate(memberPrefab);
                     }
+                    else
+                    {
+                        go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                        if (memberMaterial != null)
+                        {
+                            var rend = go.GetComponent<Renderer>();
+                            if (rend != null) rend.sharedMaterial = memberMaterial;
+                        }
+                    }
+                    go.name = $"Crowd_{r}_{c}";
                     go.transform.SetParent(transform, false);
                     go.transform.localPosition = new Vector3(
-                        c * spacing - offsetX, baseHeight * 0.5f, r * spacing - offsetZ);
+                        c * spacing - offsetX, 0f, r * spacing - offsetZ);
+                    go.transform.localRotation = Quaternion.Euler(0f, Random.Range(-rotationJitter, rotationJitter), 0f);
+                    go.transform.localScale = Vector3.one * (1f + Random.Range(-scaleJitter, scaleJitter));
                     _members[idx++] = go.transform;
                 }
             }
@@ -94,10 +107,7 @@ namespace PitTycoon.Unity
                 if (tr == null) continue;
                 float phase = i * 0.6f;
                 float bob = Mathf.Abs(Mathf.Sin(t * bobSpeed + phase)) * bounceHeight * intensity;
-                float h = baseHeight + bob + _pop;
-
-                Vector3 s = tr.localScale; s.y = h; tr.localScale = s;
-                Vector3 p = tr.localPosition; p.y = h * 0.5f; tr.localPosition = p;
+                Vector3 p = tr.localPosition; p.y = bob + _pop; tr.localPosition = p;
             }
         }
     }
