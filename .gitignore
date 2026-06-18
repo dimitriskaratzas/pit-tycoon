@@ -64,3 +64,4 @@ Thumbs.db
 # The *.csproj rule above targets Unity-generated files; re-include ours.
 !tests/**/*.csproj
 
+tmp_blender/
