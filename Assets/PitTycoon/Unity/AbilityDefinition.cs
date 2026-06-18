@@ -2,9 +2,15 @@ using UnityEngine;
 
 namespace PitTycoon.Unity
 {
+    /// <summary>How an ability is triggered.</summary>
+    public enum AbilityTrigger { Spacebar, Button }
+
+    /// <summary>Which VFX an ability spawns on fire.</summary>
+    public enum VfxKind { Whirlpool, LightBurst, Woofer }
+
     /// <summary>
-    /// Data-driven ability (M1: whirlpool only). Adding more abilities = new assets,
-    /// no code. On-beat firing multiplies BaseSpike up to MaxMultiplier within tolerance.
+    /// Data-driven ability. Adding an ability = a new asset (no code) as long as it reuses an
+    /// existing VfxKind. On-beat firing multiplies BaseSpike up to MaxMultiplier within tolerance.
     /// </summary>
     [CreateAssetMenu(fileName = "AbilityDefinition", menuName = "Pit Tycoon/Ability Definition")]
     public sealed class AbilityDefinition : ScriptableObject
@@ -21,5 +27,14 @@ namespace PitTycoon.Unity
         public float ToleranceSeconds = 0.1f;
         [Tooltip("Seconds between fires. ~one beat (0.5s at 120 BPM) lets you tap on the rhythm.")]
         public float Cooldown = 0.5f;
+
+        [Header("Roster (M3b)")]
+        [Tooltip("Shop price. 0 + OwnedFromStart for the starter whirlpool.")]
+        [Min(0)] public int Cost = 0;
+        public bool OwnedFromStart = false;
+        [Tooltip("Spacebar = the timed/rhythm ability; Button = a click/hotkey purchasable.")]
+        public AbilityTrigger Trigger = AbilityTrigger.Button;
+        public VfxKind Vfx = VfxKind.Whirlpool;
+        public Color HudColor = Color.white;
     }
 }
