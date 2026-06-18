@@ -98,3 +98,22 @@ The Outline feature needs `_CameraNormalsTexture`. If lines are missing, confirm
 feature's Requirements includes **Normal**; if it still fails on this URP version, leave
 Requirements = Depth+Normal (URP generates the DepthNormals prepass when a feature requests
 Normal). The ComicLit shader's `DepthNormals` pass must compile for objects to appear there.
+
+## Milestone 2b — Festival assets
+
+Prereq: M1 scene built and M2a comic look applied (so the accent lights + ComicLit exist).
+
+1. Let the FBX in `Assets/PitTycoon/Art/Models/` import (Unity does this automatically).
+   They should appear upright at sensible scale; if any is rotated/huge, tell me and I'll
+   re-export from Blender with corrected settings.
+2. With `Greybox.unity` open, run **Pit Tycoon → Build Festival Scene (M2b)**.
+   This creates `CrowdFigure.prefab` + `StructureMat`, places the stage/truss/PA/banner,
+   reparents the accent lights onto the truss, and points CrowdController at the figure.
+3. Press **Play**. Expected: the crowd is now arms-up figures that **hop** with the music
+   (bigger hop on beats), with a stage/truss/PA/banner behind them, all comic-shaded.
+
+### Tuning (CrowdController in the scene)
+- `Bounce Height` / `Bob Speed` — hop size and tempo.
+- `Beat Pop` — extra hop on detected beats.
+- `Rotation Jitter` / `Scale Jitter` — per-figure variety (0 = uniform).
+- `Member Prefab` — the crowd-figure prefab (auto-wired by the menu; capsule fallback if cleared).
