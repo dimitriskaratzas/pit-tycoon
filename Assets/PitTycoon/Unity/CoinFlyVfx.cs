@@ -8,6 +8,9 @@ namespace PitTycoon.Unity
     /// </summary>
     public sealed class CoinFlyVfx : MonoBehaviour
     {
+        /// <summary>Optional comic material applied to spawned coins (set by BeatVfxController).</summary>
+        public static Material OverrideMaterial;
+
         private Vector3 _velocity;
         private float _life;
         private const float MaxLife = 1.3f;
@@ -21,6 +24,11 @@ namespace PitTycoon.Unity
                 go.name = "Coin";
                 var col = go.GetComponent<Collider>();
                 if (col != null) Destroy(col);
+                if (OverrideMaterial != null)
+                {
+                    var rend = go.GetComponent<Renderer>();
+                    if (rend != null) rend.sharedMaterial = OverrideMaterial;
+                }
                 go.transform.position = origin + Random.insideUnitSphere * 0.8f;
                 go.transform.localScale = Vector3.one * 0.35f;
                 var coin = go.AddComponent<CoinFlyVfx>();
