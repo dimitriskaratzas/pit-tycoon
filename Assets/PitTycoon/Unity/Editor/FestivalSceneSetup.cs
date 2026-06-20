@@ -51,8 +51,8 @@ namespace PitTycoon.Unity.EditorTools
             var stage = PlaceModel("Stage.fbx", "Stage", new Vector3(0f, 0f, 9f), structureMat);
             var truss = PlaceModel("Truss.fbx", "Truss", new Vector3(0f, 0f, 9f), structureMat);
             PlaceModel("Banner.fbx", "Banner", new Vector3(0f, 1.2f, 10f), structureMat);
-            PlaceModel("PASpeaker.fbx", "PA Left", new Vector3(-6f, 0f, 9f), structureMat);
-            PlaceModel("PASpeaker.fbx", "PA Right", new Vector3(6f, 0f, 9f), structureMat);
+            var paLeft = PlaceModel("PASpeaker.fbx", "PA Left", new Vector3(-6f, 0f, 9f), structureMat);
+            var paRight = PlaceModel("PASpeaker.fbx", "PA Right", new Vector3(6f, 0f, 9f), structureMat);
 
             // Reparent the M2a accent lights onto the truss beam.
             if (truss != null)
@@ -63,6 +63,7 @@ namespace PitTycoon.Unity.EditorTools
             }
 
             WireBeatVfx(lit, stage);
+            WireVenue(stage, paLeft, paRight);
 
             var active = EditorSceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(active);
@@ -105,6 +106,40 @@ namespace PitTycoon.Unity.EditorTools
         {
             var prop = so.FindProperty(field);
             if (prop != null) prop.objectReferenceValue = value;
+        }
+
+        private static void WireVenue(GameObject stage, GameObject paLeft, GameObject paRight)
+        {
+            var systems = GameObject.Find("Systems");
+            if (systems == null) return;
+            var venue = systems.GetComponent<VenueController>();
+            if (venue == null) venue = systems.AddComponent<VenueController>();
+
+            var lights = new System.Collections.Generic.List<Light>();
+            foreach (var name in new[] { "Accent Amber", "Accent Magenta", "Accent Cyan" })
+            {
+                var go = GameObject.Find(name);
+                if (go != null) { var l = go.GetComponent<Light>(); if (l != null) lights.Add(l); }
+            }
+
+            var vso = new SerializedObject(venue);
+            SetRef(vso, "stage", stage != null ? stage.transform : null);
+            SetRef(vso, "paLeft", paLeft != null ? paLeft.transform : null);
+            SetRef(vso, "paRight", paRight != null ? paRight.transform : null);
+            var arr = vso.FindProperty("accentLights");
+            arr.arraySize = lights.Count;
+            for (int i = 0; i < lights.Count; i++) arr.GetArrayElementAtIndex(i).objectReferenceValue = lights[i];
+            vso.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(venue);
+
+            var upgrades = Object.FindAnyObjectByType<UpgradeSystem>();
+            if (upgrades != null)
+            {
+                var uso = new SerializedObject(upgrades);
+                SetRef(uso, "venue", venue);
+                uso.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(upgrades);
+            }
         }
 
         private static GameObject BuildFigurePrefab(Material crowdMat)
