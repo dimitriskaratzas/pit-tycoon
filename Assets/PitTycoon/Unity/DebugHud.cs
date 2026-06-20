@@ -110,27 +110,33 @@ namespace PitTycoon.Unity
                     GUI.Label(new Rect(rx, 56, 200, 22), $"Banked: +${setController.LastCashEarned}");
             }
 
-            if (setController != null && setController.Current == SetController.Phase.Intermission
-                && upgrades != null)
+            if (setController != null && setController.Current == SetController.Phase.Intermission)
             {
-                const float px = 12, py = 290, pw = 320;
-                GUI.Box(new Rect(px, py, pw, 200), "INTERMISSION");
-                var upg = upgrades.CapacityUpgrade;
-                if (upg != null)
-                {
-                    bool afford = upgrades.CanAfford(upg);
-                    GUI.enabled = afford;
-                    if (GUI.Button(new Rect(px + 10, py + 26, pw - 20, 30),
-                            $"Buy {upg.DisplayName} (${upg.Cost})  +{upg.AddColumns}x{upg.AddRows} crowd"))
-                        upgrades.TryPurchase(upg);
-                    GUI.enabled = true;
-                    if (!afford)
-                        GUI.Label(new Rect(px + 10, py + 58, pw - 20, 20), "Not enough cash.");
-                }
-                if (GUI.Button(new Rect(px + 10, py + 76, pw - 20, 28), "Start Next Set ▶"))
-                    setController.StartNextSet();
+                const float px = 12, pw = 320;
+                float py = 290;
 
-                float by = py + 112f;
+                int upgradeRows = upgrades != null ? upgrades.Upgrades.Count : 0;
+                int abilityRows = 0;
+                if (abilities != null)
+                    foreach (var a in abilities.Abilities) if (!a.Owned) abilityRows++;
+                float boxH = 44f + (upgradeRows + abilityRows + 1) * 30f;
+                GUI.Box(new Rect(px, py, pw, boxH), "INTERMISSION");
+
+                float y = py + 26f;
+                if (upgrades != null)
+                {
+                    foreach (var u in upgrades.Upgrades)
+                    {
+                        int cost = upgrades.CurrentCost(u);
+                        int lvl = upgrades.LevelOf(u);
+                        bool afford = upgrades.CanAfford(u);
+                        GUI.enabled = afford;
+                        if (GUI.Button(new Rect(px + 10, y, pw - 20, 26), $"{u.DisplayName}  Lv{lvl} (${cost})"))
+                            upgrades.TryPurchase(u);
+                        GUI.enabled = true;
+                        y += 30f;
+                    }
+                }
                 if (abilities != null)
                 {
                     foreach (var a in abilities.Abilities)
@@ -139,12 +145,14 @@ namespace PitTycoon.Unity
                         var def = abilities.DefinitionOf(a);
                         bool afford = abilities.CanAfford(def);
                         GUI.enabled = afford;
-                        if (GUI.Button(new Rect(px + 10, by, pw - 20, 26), $"Buy {def.DisplayName} (${def.Cost})"))
+                        if (GUI.Button(new Rect(px + 10, y, pw - 20, 26), $"Buy {def.DisplayName} (${def.Cost})"))
                             abilities.TryUnlock(def);
                         GUI.enabled = true;
-                        by += 30f;
+                        y += 30f;
                     }
                 }
+                if (GUI.Button(new Rect(px + 10, y, pw - 20, 28), "Start Next Set ▶"))
+                    setController.StartNextSet();
             }
         }
     }
