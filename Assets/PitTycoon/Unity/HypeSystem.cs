@@ -18,6 +18,7 @@ namespace PitTycoon.Unity
         private HypeCalculator _calc;
         private EventBus _bus;
         private bool _live;
+        private float _rateBonus;
 
         public float Current => _calc?.Current ?? 0f;
         public float Ceiling => _calc?.Ceiling ?? startingCeiling;
@@ -48,10 +49,13 @@ namespace PitTycoon.Unity
         /// <summary>Permanently raise the hype ceiling (capacity/stage upgrades).</summary>
         public void RaiseCeiling(float delta) => _calc?.RaiseCeiling(delta);
 
+        /// <summary>Permanently raise the passive hype/sec (lighting/PA upgrades).</summary>
+        public void RaiseRate(float delta) => _rateBonus += delta;
+
         private void Update()
         {
             if (!_live || analyzer == null || _calc == null) return;
-            _calc.Tick(Time.deltaTime, analyzer.Intensity01, passiveRatePerSecond);
+            _calc.Tick(Time.deltaTime, analyzer.Intensity01, passiveRatePerSecond + _rateBonus);
         }
     }
 }
