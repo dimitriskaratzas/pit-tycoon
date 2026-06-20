@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9fff25a4ab41624d9a20371b6dd3b27, type: 3}
+  m_Name: Upgrade_Stage
+  m_EditorClassIdentifier: PitTycoon.Unity::PitTycoon.Unity.UpgradeDefinition
+  Id: stage
+  DisplayName: Stage
+  Kind: 1
+  BaseCost: 90
+  CostGrowth: 1.7
+  AddColumns: 0
+  AddRows: 0
+  CeilingDelta: 40
+  RateDelta: 0

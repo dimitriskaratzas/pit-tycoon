@@ -2,22 +2,31 @@ using UnityEngine;
 
 namespace PitTycoon.Unity
 {
+    /// <summary>Which venue system a passive upgrade scales.</summary>
+    public enum UpgradeKind { Grounds, Stage, Lighting, PA }
+
     /// <summary>
-    /// Data-driven passive upgrade (M1: the capacity / "grounds" upgrade only — the
-    /// densest visible change). Buying it grows the crowd grid and raises the hype
-    /// ceiling, so the next set is visibly bigger and can bank more.
+    /// Data-driven passive upgrade. Bought repeatedly at an escalating cost
+    /// (BaseCost * CostGrowth^level); each purchase applies its per-level deltas and
+    /// a visible step on the venue (via VenueController, by Kind).
     /// </summary>
     [CreateAssetMenu(fileName = "UpgradeDefinition", menuName = "Pit Tycoon/Upgrade Definition")]
     public sealed class UpgradeDefinition : ScriptableObject
     {
-        public string Id = "capacity";
+        public string Id = "grounds";
         public string DisplayName = "Grounds Expansion";
-        [Min(0)] public int Cost = 60;
-        [Tooltip("Crowd columns added per purchase.")]
-        public int AddColumns = 4;
-        [Tooltip("Crowd rows added per purchase.")]
-        public int AddRows = 2;
-        [Tooltip("Hype ceiling added per purchase (bigger venue holds more hype).")]
-        public float CeilingDelta = 25f;
+        public UpgradeKind Kind = UpgradeKind.Grounds;
+        [Min(0)] public int BaseCost = 60;
+        [Min(1f)] public float CostGrowth = 1.6f;
+
+        [Header("Per-level effects (set the ones relevant to this kind)")]
+        [Tooltip("Crowd columns added per purchase (Grounds).")]
+        public int AddColumns = 0;
+        [Tooltip("Crowd rows added per purchase (Grounds).")]
+        public int AddRows = 0;
+        [Tooltip("Hype ceiling added per purchase (Stage, Grounds).")]
+        public float CeilingDelta = 0f;
+        [Tooltip("Passive hype/sec added per purchase (Lighting, PA).")]
+        public float RateDelta = 0f;
     }
 }

@@ -13,7 +13,6 @@ namespace PitTycoon.Unity.EditorTools
     public static class PitTycoonSetup
     {
         private const string AudioConfigPath = "Assets/Settings/AudioAnalyzerConfig.asset";
-        private const string UpgradePath = "Assets/Settings/UpgradeDefinition.asset";
         private const string ScenePath = "Assets/Scenes/Greybox.unity";
 
         [MenuItem("Pit Tycoon/Build Greybox Scene")]
@@ -28,7 +27,19 @@ namespace PitTycoon.Unity.EditorTools
             // Assets created AFTER NewScene (NewScene's unused-asset unload would otherwise
             // destroy a freshly-created asset before anything references it -> wires as None).
             var audioConfig = LoadOrCreate<AudioAnalyzerConfig>(AudioConfigPath);
-            var upgradeDef = LoadOrCreate<UpgradeDefinition>(UpgradePath);
+
+            var groundsDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_Grounds.asset");
+            ConfigureUpgrade(groundsDef, "grounds", "Grounds Expansion", UpgradeKind.Grounds, 60, 1.6f,
+                addCols: 4, addRows: 2, ceilingDelta: 15f, rateDelta: 0f);
+            var stageDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_Stage.asset");
+            ConfigureUpgrade(stageDef, "stage", "Stage", UpgradeKind.Stage, 90, 1.7f,
+                addCols: 0, addRows: 0, ceilingDelta: 40f, rateDelta: 0f);
+            var lightingDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_Lighting.asset");
+            ConfigureUpgrade(lightingDef, "lighting", "Lighting Rig", UpgradeKind.Lighting, 75, 1.6f,
+                addCols: 0, addRows: 0, ceilingDelta: 0f, rateDelta: 2.5f);
+            var paDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_PA.asset");
+            ConfigureUpgrade(paDef, "pa", "PA / Speakers", UpgradeKind.PA, 110, 1.7f,
+                addCols: 0, addRows: 0, ceilingDelta: 0f, rateDelta: 3.5f);
 
             var whirlpoolDef = LoadOrCreate<AbilityDefinition>("Assets/Settings/Ability_Whirlpool.asset");
             ConfigureAbility(whirlpoolDef, "whirlpool", "Whirlpool", 0, true, AbilityTrigger.Spacebar, VfxKind.Whirlpool,
@@ -94,8 +105,8 @@ namespace PitTycoon.Unity.EditorTools
             WireRefs(hype, ("analyzer", analyzer));
             WireAbilityList(abilities, new[] { whirlpoolDef, lightDef, wooferDef });
             WireRefs(abilities, ("economy", economy), ("crowd", crowd), ("vfxAnchor", crowdGo.transform));
-            WireRefs(upgrades,
-                ("capacityUpgrade", upgradeDef), ("economy", economy), ("hype", hype), ("crowd", crowd));
+            WireUpgradeList(upgrades, new[] { groundsDef, stageDef, lightingDef, paDef });
+            WireRefs(upgrades, ("economy", economy), ("hype", hype), ("crowd", crowd));
             WireRefs(setController,
                 ("source", src), ("hype", hype), ("economy", economy), ("crowd", crowd));
 
@@ -144,6 +155,34 @@ namespace PitTycoon.Unity.EditorTools
             so.FindProperty("HudColor").colorValue = hud;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(def);
+        }
+
+        private static void ConfigureUpgrade(UpgradeDefinition def, string id, string name, UpgradeKind kind,
+            int baseCost, float growth, int addCols, int addRows, float ceilingDelta, float rateDelta)
+        {
+            var so = new SerializedObject(def);
+            so.FindProperty("Id").stringValue = id;
+            so.FindProperty("DisplayName").stringValue = name;
+            so.FindProperty("Kind").enumValueIndex = (int)kind;
+            so.FindProperty("BaseCost").intValue = baseCost;
+            so.FindProperty("CostGrowth").floatValue = growth;
+            so.FindProperty("AddColumns").intValue = addCols;
+            so.FindProperty("AddRows").intValue = addRows;
+            so.FindProperty("CeilingDelta").floatValue = ceilingDelta;
+            so.FindProperty("RateDelta").floatValue = rateDelta;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(def);
+        }
+
+        private static void WireUpgradeList(Object target, UpgradeDefinition[] defs)
+        {
+            var so = new SerializedObject(target);
+            var list = so.FindProperty("upgrades");
+            list.arraySize = defs.Length;
+            for (int i = 0; i < defs.Length; i++)
+                list.GetArrayElementAtIndex(i).objectReferenceValue = defs[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
         }
 
         private static void WireAbilityList(Object target, AbilityDefinition[] defs)
