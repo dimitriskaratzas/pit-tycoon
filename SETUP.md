@@ -135,3 +135,20 @@ Prereq: M2a + M2b applied (comic look + festival scene).
 - `Min Interval` — seconds between big-beat pops (raise to thin them out).
 - `Shockwave Radius` — how far the ring expands.
 - `Whirlpool Material` / `Coin Material` — the comic accent materials.
+
+## Milestone 3a — Passive upgrade roster
+
+Prereq: M2a + M2b applied (the venue instances must exist for the visible scaling).
+
+1. Pull M3a, let Unity recompile.
+2. Run **Pit Tycoon → Build Greybox Scene** (creates the four `Upgrade_*` assets + wires the
+   `UpgradeSystem` list), then **Apply Comic Look (M2a)** and **Build Festival Scene (M2b)** —
+   the latter now also adds a `VenueController` and links it to `UpgradeSystem`.
+3. Play a set, let it bank cash, and in intermission buy each upgrade. Expected: each buy
+   **escalates** its next cost (shown as `Lv N ($cost)`), and visibly steps the venue —
+   Grounds = denser crowd next set, Stage = bigger stage, Lighting = brighter lights,
+   PA = bigger speaker stacks — while hype ceiling/rate climb.
+
+### Tuning
+- Each `Assets/Settings/Upgrade_*.asset`: `BaseCost`, `CostGrowth`, and the per-level deltas.
+- `VenueController` on `Systems`: `stageStep` / `paStep` / `lightStep` (how much each level scales).
