@@ -20,11 +20,9 @@ namespace PitTycoon.Unity
         [Min(1f)] public float CostGrowth = 1.6f;
 
         [Header("Per-level effects (set the ones relevant to this kind)")]
-        [Tooltip("Crowd columns added per purchase (Grounds).")]
-        public int AddColumns = 0;
-        [Tooltip("Crowd rows added per purchase (Grounds).")]
-        public int AddRows = 0;
-        [Tooltip("Hype ceiling added per purchase (Stage, Grounds).")]
+        [Tooltip("Crowd capacity (member slots) added per purchase (Grounds).")]
+        [Min(0)] public int AddCapacity = 0;
+        [Tooltip("Hype ceiling added per purchase (Stage).")]
         public float CeilingDelta = 0f;
         [Tooltip("Passive hype/sec added per purchase (Lighting, PA).")]
         public float RateDelta = 0f;

@@ -44,7 +44,7 @@ namespace PitTycoon.Unity
             int level = LevelOf(u) + 1;
             _levels[u] = level;
 
-            if (u.AddColumns > 0 || u.AddRows > 0) crowd?.Grow(u.AddColumns, u.AddRows);
+            if (u.AddCapacity > 0) crowd?.RaiseCapacity(u.AddCapacity);
             if (u.CeilingDelta > 0f) hype?.RaiseCeiling(u.CeilingDelta);
             if (u.RateDelta > 0f) hype?.RaiseRate(u.RateDelta);
             venue?.Apply(u.Kind, level);
