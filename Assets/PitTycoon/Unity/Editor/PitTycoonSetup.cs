@@ -30,16 +30,16 @@ namespace PitTycoon.Unity.EditorTools
 
             var groundsDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_Grounds.asset");
             ConfigureUpgrade(groundsDef, "grounds", "Grounds Expansion", UpgradeKind.Grounds, 60, 1.6f,
-                addCols: 4, addRows: 2, ceilingDelta: 15f, rateDelta: 0f);
+                addCapacity: 30, ceilingDelta: 0f, rateDelta: 0f);
             var stageDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_Stage.asset");
             ConfigureUpgrade(stageDef, "stage", "Stage", UpgradeKind.Stage, 90, 1.7f,
-                addCols: 0, addRows: 0, ceilingDelta: 40f, rateDelta: 0f);
+                addCapacity: 0, ceilingDelta: 40f, rateDelta: 0f);
             var lightingDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_Lighting.asset");
             ConfigureUpgrade(lightingDef, "lighting", "Lighting Rig", UpgradeKind.Lighting, 75, 1.6f,
-                addCols: 0, addRows: 0, ceilingDelta: 0f, rateDelta: 2.5f);
+                addCapacity: 0, ceilingDelta: 0f, rateDelta: 2.5f);
             var paDef = LoadOrCreate<UpgradeDefinition>("Assets/Settings/Upgrade_PA.asset");
             ConfigureUpgrade(paDef, "pa", "PA / Speakers", UpgradeKind.PA, 110, 1.7f,
-                addCols: 0, addRows: 0, ceilingDelta: 0f, rateDelta: 3.5f);
+                addCapacity: 0, ceilingDelta: 0f, rateDelta: 3.5f);
 
             var whirlpoolDef = LoadOrCreate<AbilityDefinition>("Assets/Settings/Ability_Whirlpool.asset");
             ConfigureAbility(whirlpoolDef, "whirlpool", "Whirlpool", 0, true, AbilityTrigger.Spacebar, VfxKind.Whirlpool,
@@ -158,7 +158,7 @@ namespace PitTycoon.Unity.EditorTools
         }
 
         private static void ConfigureUpgrade(UpgradeDefinition def, string id, string name, UpgradeKind kind,
-            int baseCost, float growth, int addCols, int addRows, float ceilingDelta, float rateDelta)
+            int baseCost, float growth, int addCapacity, float ceilingDelta, float rateDelta)
         {
             var so = new SerializedObject(def);
             so.FindProperty("Id").stringValue = id;
@@ -166,8 +166,7 @@ namespace PitTycoon.Unity.EditorTools
             so.FindProperty("Kind").enumValueIndex = (int)kind;
             so.FindProperty("BaseCost").intValue = baseCost;
             so.FindProperty("CostGrowth").floatValue = growth;
-            so.FindProperty("AddColumns").intValue = addCols;
-            so.FindProperty("AddRows").intValue = addRows;
+            so.FindProperty("AddCapacity").intValue = addCapacity;
             so.FindProperty("CeilingDelta").floatValue = ceilingDelta;
             so.FindProperty("RateDelta").floatValue = rateDelta;
             so.ApplyModifiedPropertiesWithoutUndo();
