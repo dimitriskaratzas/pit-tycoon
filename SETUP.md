@@ -152,3 +152,29 @@ Prereq: M2a + M2b applied (the venue instances must exist for the visible scalin
 ### Tuning
 - Each `Assets/Settings/Upgrade_*.asset`: `BaseCost`, `CostGrowth`, and the per-level deltas.
 - `VenueController` on `Systems`: `stageStep` / `paStep` / `lightStep` (how much each level scales).
+
+## Crowd Dynamics rework
+
+Prereq: M2a + M2b applied (the venue + crowd-figure prefab must exist).
+
+1. Pull the branch, let Unity recompile (new `CrowdFill`, meter interfaces, reworked `CrowdController`).
+2. Re-run **Pit Tycoon → Build Greybox Scene**, then **Apply Comic Look (M2a)** and
+   **Build Festival Scene (M2b)** — the rebuild picks up the reworked `CrowdController`
+   (new `startingCapacity`/`startingFollowing` defaults) and regenerates the upgrade assets
+   (Grounds now uses `AddCapacity`).
+3. Play. Expected, in order:
+   - The pit starts **sparse** (a small following near the stage) and **packs from the stage
+     outward** as hype climbs through the set — members pop in front-to-back.
+   - Hype gains **faster when the pit is fuller** (fill multiplies the passive rate).
+   - At set end the crowd **stays visible** (it doesn't vanish in intermission).
+   - The next set starts at that **fuller floor** and grows higher — your following ratchets up.
+   - Buy **Grounds Expansion**: the venue gains visible **empty room at the back**, which
+     fills over the next sets as your following grows into it.
+
+### Tuning
+- `CrowdController` on the **Crowd** object: `startingCapacity` / `startingFollowing` (opening
+  pit), `columns` (pit width), `scaleInPerSecond` (how fast members pop in).
+- `HypeSystem` on **Systems**: `minFillMultiplier` — hype-rate multiplier when the pit is empty
+  (lower = stronger warm-up pressure; 1 = fill has no economic effect).
+- `Assets/Settings/Upgrade_Grounds.asset`: `AddCapacity` (slots added per purchase), `BaseCost`,
+  `CostGrowth`.
