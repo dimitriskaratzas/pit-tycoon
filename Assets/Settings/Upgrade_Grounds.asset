@@ -17,7 +17,6 @@ MonoBehaviour:
   Kind: 0
   BaseCost: 60
   CostGrowth: 1.6
-  AddColumns: 4
-  AddRows: 2
-  CeilingDelta: 15
+  AddCapacity: 30
+  CeilingDelta: 0
   RateDelta: 0

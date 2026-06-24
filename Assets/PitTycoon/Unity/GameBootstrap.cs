@@ -37,9 +37,10 @@ namespace PitTycoon.Unity
             // Bridge raw analyzer beats onto the bus (ability, future consumers subscribe here).
             analyzer.BeatDetected += OnBeat;
 
-            crowd.Initialize(analyzer);
             economy.Initialize();
             hype.Initialize(Bus);
+            crowd.Initialize(analyzer, hype, Bus);   // hype passed as IHypeMeter
+            hype.SetCrowdMeter(crowd);               // crowd passed as ICrowdMeter
             abilities.Initialize(Bus);
             upgrades.Initialize(Bus);
             setController.Initialize(Bus);
