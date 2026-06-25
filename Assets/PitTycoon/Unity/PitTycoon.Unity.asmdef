@@ -3,7 +3,9 @@
     "rootNamespace": "PitTycoon.Unity",
     "references": [
         "PitTycoon.Domain",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

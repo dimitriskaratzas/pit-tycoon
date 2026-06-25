@@ -178,3 +178,27 @@ Prereq: M2a + M2b applied (the venue + crowd-figure prefab must exist).
   (lower = stronger warm-up pressure; 1 = fill has no economic effect).
 - `Assets/Settings/Upgrade_Grounds.asset`: `AddCapacity` (slots added per purchase), `BaseCost`,
   `CostGrowth`.
+
+## UI foundation (UGUI HUD + intermission shop)
+
+Prereq: the festival scene exists (M2b) and systems are wired (`GameBootstrap`).
+
+1. Pull the branch; let Unity recompile (new `PitTycoon.Unity.UI` scripts, `HudSetup`).
+2. **One-time:** `Window → TextMeshPro → Import TMP Essential Resources` (UGUI text is invisible without it).
+3. Run **Pit Tycoon → Build HUD**. This creates the `GameHUD` canvas, an `EventSystem`
+   (with `InputSystemUIInputModule`), and wires every reference including `GameBootstrap.hud`.
+   Re-running rebuilds cleanly.
+4. Play. Expected:
+   - **Live:** hype bar (top-center) tracks hype with a peak marker; cash (top-right) and
+     set number (top-left) update; an ability button per owned ability (bottom-center) fires
+     on click **and** on its hotkey, with a cooldown overlay; a hit-quality popup and a beat
+     pulse fire during play.
+   - **Set end:** the intermission shop docks on the right (scene stays visible, no dimming),
+     shows the banked-this-set amount, upgrade rows (name/level/cost, greyed when unaffordable)
+     and ability-unlock rows; buying refreshes the rows; **Start Next Set** returns to live.
+   - **F1** toggles the dev overlay (analyzer intensity / beat / dsp).
+
+### Tuning
+- `LiveHudView`: `hitQualityHold` (popup duration), `beatPulseDecay` (pulse fade speed).
+- `HudSetup` constants (`Panel`/`Bar`/`HypeOrange`/`Amber`, anchors/sizes) control the look;
+  re-run **Build HUD** after editing.

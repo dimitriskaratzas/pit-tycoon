@@ -86,6 +86,7 @@ namespace PitTycoon.Unity
             foreach (var a in _abilities)
             {
                 if (_defOf[a].Trigger != AbilityTrigger.Button) continue;
+                if (!a.Owned) continue;
                 if (i == idx) { TryFire(a); return; }
                 i++;
             }

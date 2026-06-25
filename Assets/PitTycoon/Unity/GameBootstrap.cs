@@ -1,5 +1,6 @@
 using UnityEngine;
 using PitTycoon.Domain;
+using PitTycoon.Unity.UI;
 
 namespace PitTycoon.Unity
 {
@@ -20,6 +21,7 @@ namespace PitTycoon.Unity
         [SerializeField] private UpgradeSystem upgrades;
         [SerializeField] private SetController setController;
         [SerializeField] private BeatVfxController beatVfx;
+        [SerializeField] private HudController hud;
 
         public EventBus Bus { get; private set; }
 
@@ -28,7 +30,8 @@ namespace PitTycoon.Unity
             Bus = new EventBus();
 
             if (analyzer == null || crowd == null || hype == null || abilities == null
-                || economy == null || upgrades == null || setController == null || beatVfx == null)
+                || economy == null || upgrades == null || setController == null || beatVfx == null
+                || hud == null)
             {
                 Debug.LogError("GameBootstrap: one or more system references are not assigned.", this);
                 return;
@@ -45,6 +48,7 @@ namespace PitTycoon.Unity
             upgrades.Initialize(Bus);
             setController.Initialize(Bus);
             beatVfx.Initialize(Bus);
+            hud.Initialize(Bus, hype, economy, setController, abilities, upgrades);
             // SetController.Start() (after all Awakes) kicks off set 1.
         }
 
