@@ -147,10 +147,15 @@ namespace PitTycoon.Unity.EditorTools
             hitRT.sizeDelta = new Vector2(300f, 40f);
             r.hitQuality = AddText(hit, "PERFECT!", 24, TextAlignmentOptions.Center);
 
-            // beat pulse (full-screen edge tint)
+            // beat pulse (thin bottom-edge accent strip — alpha pulses on each beat,
+            // NOT a full-screen flash: a stretched solid image strobes the whole scene)
             var pulse = NewUI("BeatPulse", go.transform);
-            Stretch(pulse.GetComponent<RectTransform>());
-            var pulseImg = AddImage(pulse, new Color(1f, 1f, 1f, 0f));
+            var pulseRT = pulse.GetComponent<RectTransform>();
+            pulseRT.anchorMin = new Vector2(0f, 0f); pulseRT.anchorMax = new Vector2(1f, 0f);
+            pulseRT.pivot = new Vector2(0.5f, 0f);
+            pulseRT.sizeDelta = new Vector2(0f, 6f);
+            pulseRT.anchoredPosition = Vector2.zero;
+            var pulseImg = AddImage(pulse, new Color(Amber.r, Amber.g, Amber.b, 0f));
             pulseImg.raycastTarget = false;
             r.beatPulse = pulseImg;
 
