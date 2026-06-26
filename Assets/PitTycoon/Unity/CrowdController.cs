@@ -26,6 +26,8 @@ namespace PitTycoon.Unity
         [SerializeField] private GameObject memberPrefab;
         [SerializeField] private float rotationJitter = 18f;
         [SerializeField] private float scaleJitter = 0.12f;
+        [Tooltip("Translucent material for ghost-preview members (wired by Build Upgrade Preview).")]
+        [SerializeField] private Material ghostMaterial;
 
         private IAudioAnalyzer _analyzer;
         private IHypeMeter _hype;
@@ -37,6 +39,8 @@ namespace PitTycoon.Unity
         private float[] _curScale;    // per-member 0..1 scale-in progress
         private float _pop;
         private bool _live;
+        private readonly System.Collections.Generic.List<GameObject> _ghosts =
+            new System.Collections.Generic.List<GameObject>();
 
         /// <summary>ICrowdMeter: how full the pit is, 0..1.</summary>
         public float FillFraction => _fill?.FillFraction ?? 0f;
@@ -67,6 +71,7 @@ namespace PitTycoon.Unity
 
         private void OnDestroy()
         {
+            ClearPreview();
             if (_analyzer != null) _analyzer.BeatDetected -= OnBeat;
             if (_bus != null)
             {
@@ -101,6 +106,7 @@ namespace PitTycoon.Unity
         /// scale, the rest hidden at scale 0 (no flicker on rebuild).</summary>
         public void Build()
         {
+            ClearPreview();
             if (_fill == null) _fill = new CrowdFill(startingCapacity, startingFollowing);
 
             for (int i = transform.childCount - 1; i >= 0; i--)
@@ -150,6 +156,48 @@ namespace PitTycoon.Unity
                 go.transform.localScale = Vector3.one * (full * cur);
                 _members[i] = go.transform;
             }
+        }
+
+        /// <summary>Show ghost members in the slots a capacity expansion of <paramref name="delta"/>
+        /// would add (rows past the current Capacity). Does not touch the fill. Idempotent.</summary>
+        public void PreviewCapacity(int delta)
+        {
+            if (_fill == null || delta <= 0) return;
+            ClearPreview();
+
+            int from = _fill.Capacity;
+            int to = from + delta;
+
+            int startRows = Mathf.CeilToInt((float)startingCapacity / columns);
+            float frontZ = (startRows - 1) * spacing * 0.5f;
+            float offsetX = (columns - 1) * spacing * 0.5f;
+
+            for (int i = from; i < to; i++)
+            {
+                int row = i / columns;
+                int col = i % columns;
+
+                GameObject go = memberPrefab != null
+                    ? Instantiate(memberPrefab)
+                    : GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                go.name = $"GhostCrowd_{row}_{col}";
+                foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
+                if (ghostMaterial != null)
+                    foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = ghostMaterial;
+
+                go.transform.SetParent(transform, false);
+                go.transform.localPosition = new Vector3(col * spacing - offsetX, 0f, frontZ - row * spacing);
+                go.transform.localScale = Vector3.one;
+                _ghosts.Add(go);
+            }
+        }
+
+        /// <summary>Destroy any ghost-preview members.</summary>
+        public void ClearPreview()
+        {
+            for (int i = 0; i < _ghosts.Count; i++)
+                if (_ghosts[i] != null) Destroy(_ghosts[i]);
+            _ghosts.Clear();
         }
 
         private void Update()

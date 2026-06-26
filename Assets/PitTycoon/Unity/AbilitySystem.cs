@@ -118,6 +118,21 @@ namespace PitTycoon.Unity
             _bus.Publish(new AbilityFired(def.Id, r.Multiplier, r.HypeAdded));
         }
 
+        /// <summary>Preview an ability's VFX once (shop ghost-preview). No cooldown/ownership/
+        /// economy/bus side effects — purely visual.</summary>
+        public void PlayDemo(AbilityDefinition def)
+        {
+            if (def == null) return;
+            Vector3 pos = vfxAnchor != null ? vfxAnchor.position : transform.position;
+            switch (def.Vfx)
+            {
+                case VfxKind.Whirlpool: WhirlpoolVfx.Spawn(pos, 1f); break;
+                case VfxKind.Woofer: ShockwaveVfx.Spawn(pos, wooferRadius); break;
+                case VfxKind.LightBurst: LightBurstVfx.Flash(def.HudColor); break;
+            }
+            if (crowd != null) crowd.Pop(crowdPopStrength);
+        }
+
         // ---- Purchases (intermission) ----
         public bool CanAfford(AbilityDefinition def)
             => def != null && economy != null && economy.CanAfford(def.Cost);

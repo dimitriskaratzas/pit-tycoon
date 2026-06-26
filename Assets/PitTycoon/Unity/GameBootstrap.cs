@@ -22,6 +22,8 @@ namespace PitTycoon.Unity
         [SerializeField] private SetController setController;
         [SerializeField] private BeatVfxController beatVfx;
         [SerializeField] private HudController hud;
+        [Tooltip("Optional — wired by Build Upgrade Preview. Null = no camera/ghost preview.")]
+        [SerializeField] private UpgradePreviewController preview;
 
         public EventBus Bus { get; private set; }
 
@@ -48,7 +50,7 @@ namespace PitTycoon.Unity
             upgrades.Initialize(Bus);
             setController.Initialize(Bus);
             beatVfx.Initialize(Bus);
-            hud.Initialize(Bus, hype, economy, setController, abilities, upgrades);
+            hud.Initialize(Bus, hype, economy, setController, abilities, upgrades, preview);
             // SetController.Start() (after all Awakes) kicks off set 1.
         }
 

@@ -4,9 +4,9 @@ using PitTycoon.Domain;
 namespace PitTycoon.Unity.UI
 {
     /// <summary>
-    /// Top-level HUD root. Initializes the two views, then toggles Live ↔ Shop on the set
-    /// lifecycle: SetStarted shows the live HUD, SetEnded shows the intermission shop with the
-    /// banked amount. Owns no widget logic itself.
+    /// Top-level HUD root. Initializes the two views, then toggles Live <-> Shop on the set
+    /// lifecycle: SetStarted shows the live HUD (and force-clears any open upgrade preview so a
+    /// set never begins mid-ghost), SetEnded shows the intermission shop with the banked amount.
     /// </summary>
     public sealed class HudController : MonoBehaviour
     {
@@ -14,14 +14,17 @@ namespace PitTycoon.Unity.UI
         [SerializeField] private ShopView shopView;
 
         private EventBus _bus;
+        private UpgradePreviewController _preview;
 
         public void Initialize(EventBus bus, HypeSystem hype, EconomySystem economy,
-                               SetController set, AbilitySystem abilities, UpgradeSystem upgrades)
+                               SetController set, AbilitySystem abilities, UpgradeSystem upgrades,
+                               UpgradePreviewController preview)
         {
             _bus = bus;
+            _preview = preview;
 
             if (liveView != null) liveView.Initialize(bus, hype, economy, set, abilities);
-            if (shopView != null) shopView.Initialize(bus, economy, set, abilities, upgrades);
+            if (shopView != null) shopView.Initialize(bus, economy, set, abilities, upgrades, preview);
 
             _bus.Subscribe<SetStarted>(OnSetStarted);
             _bus.Subscribe<SetEnded>(OnSetEnded);
@@ -40,6 +43,7 @@ namespace PitTycoon.Unity.UI
 
         private void OnSetStarted(SetStarted e)
         {
+            _preview?.ForceClear();
             if (shopView != null) shopView.Hide();
             if (liveView != null) liveView.Show();
         }

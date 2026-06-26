@@ -202,3 +202,32 @@ Prereq: the festival scene exists (M2b) and systems are wired (`GameBootstrap`).
 - `LiveHudView`: `hitQualityHold` (popup duration), `beatPulseDecay` (pulse fade speed).
 - `HudSetup` constants (`Panel`/`Bar`/`HypeOrange`/`Amber`, anchors/sizes) control the look;
   re-run **Build HUD** after editing.
+
+## Upgrade ghost-preview (sub-project B — camera + ghost)
+
+Prereq: the UI foundation HUD exists (run **Pit Tycoon → Build HUD** first) and the festival
+scene + venue are built (M2b).
+
+1. Pull the branch; let Unity recompile (new `CameraRig`, `UpgradePreviewController`,
+   `PreviewSetup`, preview hooks on Venue/Crowd/Ability).
+2. Run **Pit Tycoon → Build HUD** (so the shop rows have the new Buy/Cancel + a Return Home
+   button), then **Pit Tycoon → Build Upgrade Preview**. The latter creates `GhostMat`, adds a
+   `CameraRig` to the Main Camera and an `UpgradePreviewController` to **Systems**, fills the
+   camera waypoints, and wires the ghost material + the ShopView/GameBootstrap preview refs.
+   Re-running either rebuilds cleanly.
+3. Play. At intermission:
+   - Click an upgrade row → the camera flies to that spot and a **ghost** shows the next step
+     (bigger stage / bigger PA / brighter lights / new back-row figures). The row expands with
+     **BUY $cost** / **CANCEL**.
+   - **Buy** commits (ghost becomes real), the row bumps level/cost, and the preview re-arms for
+     the next level; the camera stays put.
+   - **Cancel** reverts the ghost; the camera stays where it is.
+   - Selecting another row flies straight there; **⌂ Overview** returns the camera home.
+   - An ability row fires a one-shot VFX demo; **Buy** unlocks it.
+   - **Start Next Set** snaps the camera home and starts cleanly.
+
+### Tuning
+- `UpgradePreviewController` on **Systems**: the per-kind `waypoints` (camera position/euler),
+  `abilityCamPosition`/`abilityCamEuler`, and `flyDuration`.
+- `CameraRig` on the Main Camera: `defaultDuration` (fly/return speed).
+- `Assets/PitTycoon/Art/Materials/GhostMat.mat`: `Base Map` colour/alpha (ghost tint/opacity).
