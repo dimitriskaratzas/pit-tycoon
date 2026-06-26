@@ -106,6 +106,7 @@ namespace PitTycoon.Unity
         /// scale, the rest hidden at scale 0 (no flicker on rebuild).</summary>
         public void Build()
         {
+            ClearPreview();
             if (_fill == null) _fill = new CrowdFill(startingCapacity, startingFollowing);
 
             for (int i = transform.childCount - 1; i >= 0; i--)
