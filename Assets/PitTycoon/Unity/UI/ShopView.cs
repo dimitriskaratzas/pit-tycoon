@@ -8,9 +8,12 @@ using PitTycoon.Domain;
 namespace PitTycoon.Unity.UI
 {
     /// <summary>
-    /// Intermission side panel (docked right, no scene dimming): cash, banked-this-set callout,
-    /// a row per upgrade (name/level/cost, greyed when unaffordable), a row per un-owned ability,
-    /// and Start Next Set. Rebuilds rows on show and on UpgradePurchased/AbilityUnlocked.
+    /// Intermission side panel (docked right, no scene dimming). Two-step flow: clicking a row
+    /// selects it (expands Buy/Cancel) and drives the UpgradePreviewController to fly the camera
+    /// and show a ghost; Buy commits via the existing system APIs, Cancel backs out (camera stays).
+    /// A Return Home button flies the camera back to the overview. Rows rebuild on show and on
+    /// UpgradePurchased/AbilityUnlocked; selection is re-applied after a rebuild so the preview
+    /// re-arms at the new level.
     /// </summary>
     public sealed class ShopView : MonoBehaviour
     {
@@ -20,22 +23,32 @@ namespace PitTycoon.Unity.UI
         [SerializeField] private RectTransform abilityContainer;
         [SerializeField] private ShopRowWidget rowTemplate;
         [SerializeField] private Button startNextSetButton;
+        [SerializeField] private Button returnHomeButton;
 
         private EventBus _bus;
         private EconomySystem _economy;
         private SetController _set;
         private AbilitySystem _abilities;
         private UpgradeSystem _upgrades;
+        private UpgradePreviewController _preview;
 
         private readonly List<ShopRowWidget> _rows = new List<ShopRowWidget>();
+        private readonly Dictionary<ShopRowWidget, UpgradeDefinition> _rowUpgrade = new Dictionary<ShopRowWidget, UpgradeDefinition>();
+        private readonly Dictionary<ShopRowWidget, AbilityDefinition> _rowAbility = new Dictionary<ShopRowWidget, AbilityDefinition>();
+        private ShopRowWidget _selected;
+        private UpgradeDefinition _selectedUpgrade;
+        private AbilityDefinition _selectedAbility;
 
         public void Initialize(EventBus bus, EconomySystem economy, SetController set,
-                               AbilitySystem abilities, UpgradeSystem upgrades)
+                               AbilitySystem abilities, UpgradeSystem upgrades,
+                               UpgradePreviewController preview)
         {
-            _bus = bus; _economy = economy; _set = set; _abilities = abilities; _upgrades = upgrades;
+            _bus = bus; _economy = economy; _set = set; _abilities = abilities;
+            _upgrades = upgrades; _preview = preview;
 
             if (rowTemplate != null) rowTemplate.gameObject.SetActive(false);
             if (startNextSetButton != null) startNextSetButton.onClick.AddListener(OnStartNextSet);
+            if (returnHomeButton != null) returnHomeButton.onClick.AddListener(OnReturnHome);
 
             _bus.Subscribe<UpgradePurchased>(OnUpgradePurchased);
             _bus.Subscribe<AbilityUnlocked>(OnAbilityUnlocked);
@@ -44,6 +57,7 @@ namespace PitTycoon.Unity.UI
         private void OnDestroy()
         {
             if (startNextSetButton != null) startNextSetButton.onClick.RemoveListener(OnStartNextSet);
+            if (returnHomeButton != null) returnHomeButton.onClick.RemoveListener(OnReturnHome);
             if (_bus == null) return;
             _bus.Unsubscribe<UpgradePurchased>(OnUpgradePurchased);
             _bus.Unsubscribe<AbilityUnlocked>(OnAbilityUnlocked);
@@ -53,20 +67,34 @@ namespace PitTycoon.Unity.UI
         {
             gameObject.SetActive(true);
             if (bankedText != null) bankedText.text = bankedAmount > 0 ? $"banked +${bankedAmount}" : string.Empty;
+            ClearSelectionState();
             Rebuild();
         }
 
-        public void Hide() => gameObject.SetActive(false);
+        public void Hide()
+        {
+            ClearSelectionState();
+            gameObject.SetActive(false);
+        }
 
-        private void OnStartNextSet() { if (_set != null) _set.StartNextSet(); }
+        private void OnStartNextSet() { if (_set != null) _set.StartNextSet(); }   // HudController ForceClears on SetStarted
+        private void OnReturnHome() { ClearSelectionState(); _preview?.ReturnHome(); }
         private void OnUpgradePurchased(UpgradePurchased e) => RefreshIfVisible();
         private void OnAbilityUnlocked(AbilityUnlocked e) => RefreshIfVisible();
         private void RefreshIfVisible() { if (gameObject.activeSelf) Rebuild(); }
+
+        private void ClearSelectionState()
+        {
+            if (_selected != null && _selected.Actions != null) _selected.Actions.SetActive(false);
+            _selected = null; _selectedUpgrade = null; _selectedAbility = null;
+        }
 
         private void Rebuild()
         {
             foreach (var r in _rows) if (r != null) Destroy(r.gameObject);
             _rows.Clear();
+            _rowUpgrade.Clear();
+            _rowAbility.Clear();
 
             if (cashText != null && _economy != null) cashText.text = $"${_economy.Cash}";
 
@@ -77,9 +105,12 @@ namespace PitTycoon.Unity.UI
                     int cost = _upgrades.CurrentCost(u);
                     int lvl = _upgrades.LevelOf(u);
                     bool afford = _upgrades.CanAfford(u);
+                    ShopRowWidget row = MakeRow(upgradeContainer, $"{u.DisplayName}  Lv{lvl}", $"${cost}", afford);
+                    _rowUpgrade[row] = u;
                     UpgradeDefinition captured = u;
-                    MakeRow(upgradeContainer, $"{u.DisplayName}  Lv{lvl}", $"${cost}", afford,
-                            () => _upgrades.TryPurchase(captured));
+                    if (row.Button != null) row.Button.onClick.AddListener(() => SelectUpgrade(row, captured));
+                    if (row.BuyButton != null) row.BuyButton.onClick.AddListener(() => BuyUpgrade(captured));
+                    if (row.CancelButton != null) row.CancelButton.onClick.AddListener(OnCancelButton);
                 }
             }
 
@@ -90,22 +121,92 @@ namespace PitTycoon.Unity.UI
                     if (a.Owned) continue;
                     AbilityDefinition def = _abilities.DefinitionOf(a);
                     bool afford = _abilities.CanAfford(def);
+                    ShopRowWidget row = MakeRow(abilityContainer, def.DisplayName, $"${def.Cost}", afford);
+                    _rowAbility[row] = def;
                     AbilityDefinition captured = def;
-                    MakeRow(abilityContainer, def.DisplayName, $"${def.Cost}", afford,
-                            () => _abilities.TryUnlock(captured));
+                    if (row.Button != null) row.Button.onClick.AddListener(() => SelectAbility(row, captured));
+                    if (row.BuyButton != null) row.BuyButton.onClick.AddListener(() => BuyAbility(captured));
+                    if (row.CancelButton != null) row.CancelButton.onClick.AddListener(OnCancelButton);
                 }
             }
+
+            ReapplySelection();
         }
 
-        private void MakeRow(RectTransform parent, string label, string cost, bool afford, UnityAction onClick)
+        private ShopRowWidget MakeRow(RectTransform parent, string label, string cost, bool afford)
         {
             ShopRowWidget row = Instantiate(rowTemplate, parent);
             row.gameObject.SetActive(true);
             if (row.Label != null) row.Label.text = label;
             if (row.Cost != null) row.Cost.text = cost;
             if (row.Group != null) row.Group.alpha = afford ? 1f : 0.5f;
-            if (row.Button != null) { row.Button.interactable = afford; row.Button.onClick.AddListener(onClick); }
+            if (row.Actions != null) row.Actions.SetActive(false);
             _rows.Add(row);
+            return row;
+        }
+
+        private void SelectUpgrade(ShopRowWidget row, UpgradeDefinition def)
+        {
+            SetSelected(row);
+            _selectedUpgrade = def; _selectedAbility = null;
+            if (row.BuyButton != null) row.BuyButton.interactable = _upgrades.CanAfford(def);
+            _preview?.BeginUpgradePreview(def, _upgrades.LevelOf(def) + 1);
+        }
+
+        private void SelectAbility(ShopRowWidget row, AbilityDefinition def)
+        {
+            SetSelected(row);
+            _selectedAbility = def; _selectedUpgrade = null;
+            if (row.BuyButton != null) row.BuyButton.interactable = _abilities.CanAfford(def);
+            _preview?.BeginAbilityPreview(def);
+        }
+
+        private void SetSelected(ShopRowWidget row)
+        {
+            if (_selected != null && _selected != row && _selected.Actions != null) _selected.Actions.SetActive(false);
+            _selected = row;
+            if (row.Actions != null) row.Actions.SetActive(true);
+        }
+
+        private void BuyUpgrade(UpgradeDefinition def)
+        {
+            // TryPurchase publishes UpgradePurchased -> Rebuild -> ReapplySelection re-arms at the new level.
+            _upgrades?.TryPurchase(def);
+        }
+
+        private void BuyAbility(AbilityDefinition def)
+        {
+            // TryUnlock publishes AbilityUnlocked -> Rebuild; the now-owned ability drops from the
+            // list, so ReapplySelection clears the selection and the preview.
+            _abilities?.TryUnlock(def);
+        }
+
+        private void OnCancelButton()
+        {
+            ClearSelectionState();
+            _preview?.Cancel();
+        }
+
+        private void ReapplySelection()
+        {
+            if (_selectedUpgrade != null)
+            {
+                ShopRowWidget row = FindRow(_rowUpgrade, _selectedUpgrade);
+                if (row != null) SelectUpgrade(row, _selectedUpgrade);
+                else ClearSelectionState();
+            }
+            else if (_selectedAbility != null)
+            {
+                ShopRowWidget row = FindRow(_rowAbility, _selectedAbility);
+                if (row != null) SelectAbility(row, _selectedAbility);
+                else { ClearSelectionState(); _preview?.Cancel(); }
+            }
+        }
+
+        private static ShopRowWidget FindRow<T>(Dictionary<ShopRowWidget, T> map, T value) where T : Object
+        {
+            foreach (var kv in map) if (kv.Value == value) return kv.Key;
+            return null;
         }
     }
 }
