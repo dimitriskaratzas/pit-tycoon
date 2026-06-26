@@ -202,6 +202,7 @@ namespace PitTycoon.Unity.EditorTools
         {
             public TMP_Text cash; public TMP_Text banked; public RectTransform upgrades;
             public RectTransform abilities; public ShopRowWidget template; public Button start;
+            public Button returnHome;
         }
 
         private static ShopView BuildShop(Transform parent, out ShopRefs r)
@@ -232,6 +233,13 @@ namespace PitTycoon.Unity.EditorTools
             banked.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 22f);
             r.banked = AddText(banked, "", 14, TextAlignmentOptions.Center);
             r.banked.color = new Color(0.62f, 0.88f, 0.8f);
+
+            var home = NewUI("ReturnHome", go.transform);
+            home.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 26f);
+            var homeImg = AddImage(home, Bar); AddOutline(home);
+            r.returnHome = home.AddComponent<Button>(); r.returnHome.targetGraphic = homeImg;
+            var homeText = NewUI("Text", home.transform); Stretch(homeText.GetComponent<RectTransform>());
+            AddText(homeText, "⌂ Overview", 12, TextAlignmentOptions.Center);
 
             var upHead = NewUI("UpgradesLabel", go.transform);
             upHead.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 18f);
@@ -291,6 +299,34 @@ namespace PitTycoon.Unity.EditorTools
             crt.anchoredPosition = new Vector2(-8f, 0f);
             widget.Cost = AddText(cost, "$0", 13, TextAlignmentOptions.Right);
 
+            // Actions sub-panel (Buy / Cancel) — hidden until the row is selected.
+            var actions = NewUI("Actions", go.transform);
+            var art = actions.GetComponent<RectTransform>();
+            art.anchorMin = new Vector2(0f, 0f); art.anchorMax = new Vector2(1f, 1f);
+            art.offsetMin = Vector2.zero; art.offsetMax = Vector2.zero;
+            var alay = actions.AddComponent<HorizontalLayoutGroup>();
+            alay.spacing = 6f; alay.childAlignment = TextAnchor.MiddleRight;
+            alay.padding = new RectOffset(0, 6, 4, 4);
+            alay.childControlWidth = false; alay.childControlHeight = false;
+            alay.childForceExpandWidth = false; alay.childForceExpandHeight = false;
+
+            var buy = NewUI("Buy", actions.transform);
+            buy.GetComponent<RectTransform>().sizeDelta = new Vector2(70f, 24f);
+            var buyImg = AddImage(buy, HypeOrange); AddOutline(buy);
+            widget.BuyButton = buy.AddComponent<Button>(); widget.BuyButton.targetGraphic = buyImg;
+            var buyText = NewUI("Text", buy.transform); Stretch(buyText.GetComponent<RectTransform>());
+            AddText(buyText, "BUY", 12, TextAlignmentOptions.Center);
+
+            var cancel = NewUI("Cancel", actions.transform);
+            cancel.GetComponent<RectTransform>().sizeDelta = new Vector2(70f, 24f);
+            var cancelImg = AddImage(cancel, Bar); AddOutline(cancel);
+            widget.CancelButton = cancel.AddComponent<Button>(); widget.CancelButton.targetGraphic = cancelImg;
+            var cancelText = NewUI("Text", cancel.transform); Stretch(cancelText.GetComponent<RectTransform>());
+            AddText(cancelText, "CANCEL", 12, TextAlignmentOptions.Center);
+
+            widget.Actions = actions;
+            actions.SetActive(false);
+
             return widget;
         }
 
@@ -320,6 +356,7 @@ namespace PitTycoon.Unity.EditorTools
             so.FindProperty("abilityContainer").objectReferenceValue = r.abilities;
             so.FindProperty("rowTemplate").objectReferenceValue = r.template;
             so.FindProperty("startNextSetButton").objectReferenceValue = r.start;
+            so.FindProperty("returnHomeButton").objectReferenceValue = r.returnHome;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
