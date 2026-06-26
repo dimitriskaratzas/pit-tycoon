@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Events;
 using TMPro;
 using PitTycoon.Domain;
 
@@ -74,6 +73,7 @@ namespace PitTycoon.Unity.UI
         public void Hide()
         {
             ClearSelectionState();
+            _preview?.Cancel();
             gameObject.SetActive(false);
         }
 
@@ -147,6 +147,7 @@ namespace PitTycoon.Unity.UI
 
         private void SelectUpgrade(ShopRowWidget row, UpgradeDefinition def)
         {
+            if (_upgrades == null) return;
             SetSelected(row);
             _selectedUpgrade = def; _selectedAbility = null;
             if (row.BuyButton != null) row.BuyButton.interactable = _upgrades.CanAfford(def);
@@ -155,6 +156,7 @@ namespace PitTycoon.Unity.UI
 
         private void SelectAbility(ShopRowWidget row, AbilityDefinition def)
         {
+            if (_abilities == null) return;
             SetSelected(row);
             _selectedAbility = def; _selectedUpgrade = null;
             if (row.BuyButton != null) row.BuyButton.interactable = _abilities.CanAfford(def);
