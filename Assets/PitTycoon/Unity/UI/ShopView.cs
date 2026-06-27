@@ -172,7 +172,7 @@ namespace PitTycoon.Unity.UI
         {
             if (_upgrades == null) return;
             SetSelected(row);
-            _selectedUpgrade = def; _selectedAbility = null;
+            _selectedUpgrade = def; _selectedAbility = null; _selectedBuildId = null;
             if (row.BuyButton != null) row.BuyButton.interactable = _upgrades.CanAfford(def);
             _preview?.BeginUpgradePreview(def, _upgrades.LevelOf(def) + 1);
         }
@@ -181,7 +181,7 @@ namespace PitTycoon.Unity.UI
         {
             if (_abilities == null) return;
             SetSelected(row);
-            _selectedAbility = def; _selectedUpgrade = null;
+            _selectedAbility = def; _selectedUpgrade = null; _selectedBuildId = null;
             if (row.BuyButton != null) row.BuyButton.interactable = _abilities.CanAfford(def);
             _preview?.BeginAbilityPreview(def);
         }
