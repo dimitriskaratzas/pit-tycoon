@@ -72,6 +72,8 @@ namespace PitTycoon.Unity.EditorTools
             if (buildSys == null) buildSys = systems.AddComponent<BuildSystem>();
 
             var ghost = AssetDatabase.LoadAssetAtPath<Material>(GhostMatPath);
+            if (ghost == null)
+                Debug.LogWarning("FestivalGroundSetup: GhostMat not found — run Build Upgrade Preview first so build-spot previews render.");
 
             // 5. Wire BuildSpotController.
             SetRef(spotsCtl, "layout", layout);
@@ -88,21 +90,18 @@ namespace PitTycoon.Unity.EditorTools
             {
                 SetRef(controller, "buildSpots", spotsCtl);
                 var so = new SerializedObject(controller);
-                so.FindProperty("liveCamPosition").vector3Value = cam.transform.position;
-                so.FindProperty("liveCamEuler").vector3Value = cam.transform.eulerAngles;
-                so.FindProperty("surveyCamPosition").vector3Value = new Vector3(0f, 45f, -55f);
-                so.FindProperty("surveyCamEuler").vector3Value = new Vector3(40f, 0f, 0f);
+                SetVector3(so, "liveCamPosition", cam.transform.position);
+                SetVector3(so, "liveCamEuler", cam.transform.eulerAngles);
+                SetVector3(so, "surveyCamPosition", new Vector3(0f, 45f, -55f));
+                SetVector3(so, "surveyCamEuler", new Vector3(40f, 0f, 0f));
                 so.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(controller);
             }
             else Debug.LogWarning("FestivalGroundSetup: no UpgradePreviewController found. Run Build Upgrade Preview first.");
 
-            // 8. GameBootstrap refs.
-            if (boot != null)
-            {
-                SetRef(boot, "buildSpots", spotsCtl);
-                SetRef(boot, "builds", buildSys);
-            }
+            // 8. GameBootstrap refs. (BuildSpotController is reached at runtime via BuildSystem.spots,
+            // so GameBootstrap only needs the BuildSystem ref.)
+            if (boot != null) SetRef(boot, "builds", buildSys);
             else Debug.LogWarning("FestivalGroundSetup: no GameBootstrap found in scene.");
 
             EditorUtility.SetDirty(spotsCtl);
@@ -141,6 +140,13 @@ namespace PitTycoon.Unity.EditorTools
             var p = so.FindProperty(field);
             if (p != null) { p.objectReferenceValue = value; so.ApplyModifiedPropertiesWithoutUndo(); }
             else Debug.LogWarning($"FestivalGroundSetup: field '{field}' not found on {target.GetType().Name}.");
+        }
+
+        private static void SetVector3(SerializedObject so, string field, Vector3 value)
+        {
+            var p = so.FindProperty(field);
+            if (p != null) p.vector3Value = value;
+            else Debug.LogWarning($"FestivalGroundSetup: field '{field}' not found on {so.targetObject.GetType().Name}.");
         }
     }
 }
