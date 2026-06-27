@@ -231,3 +231,20 @@ scene + venue are built (M2b).
   `abilityCamPosition`/`abilityCamEuler`, and `flyDuration`.
 - `CameraRig` on the Main Camera: `defaultDuration` (fly/return speed).
 - `Assets/PitTycoon/Art/Materials/GhostMat.mat`: `Base Map` colour/alpha (ghost tint/opacity).
+
+## Festival ground (M4a — open ground, build spots)
+
+**Prereq:** run **Build HUD** and **Build Upgrade Preview** first (this step wires into the shop + the camera rig).
+
+1. Pull + let Unity recompile (no console errors — new `VenueLayout`/`BuildSpotController`/`BuildSystem`/editor scripts).
+2. Run **Pit Tycoon → Build Festival Ground**. This enlarges the ground, creates greybox structure prefabs under `Assets/PitTycoon/Art/Prefabs/Greybox/`, creates `Assets/Settings/OpenAirLayout.asset`, adds `BuildSpotController` + `BuildSystem` to the **Systems** object, seeds the survey/live camera poses + the `buildSpots` ref on `UpgradePreviewController`, and wires `GameBootstrap`.
+3. Commit the generated `.meta` files (new scripts + prefabs + `OpenAirLayout.asset`) and the modified `Greybox.unity` scene.
+4. Press Play and verify:
+   - Reach intermission — the camera pulls back to a **wide survey** of the open ground; the shop shows a **Build** category alongside Upgrades / Abilities.
+   - Click a Build row — the camera flies to that spot and a **translucent ghost** of the structure appears.
+   - **Buy** raises the real structure (ghost → real); the effect shows next set (a Second Stage / Gate → hype builds faster; Camping → more crowd fills in); the spot leaves the Build list; the camera stays.
+   - **Cancel** clears the ghost; the camera stays. **⌂ Overview** returns to the survey pose.
+   - **Start Next Set** flies the camera down to the live (close) pose and starts cleanly (no lingering ghost); **built structures persist**.
+   - F1 dev overlay and M1/M2/M3 behavior (abilities, VFX, coins, venue scaling, crowd fill, upgrade ghost-preview) all intact.
+
+**Tuning:** build-spot poses, costs, and effect magnitudes live on `OpenAirLayout`; the wide **survey** pose, the close **live** pose, and per-spot camera waypoints live on `UpgradePreviewController` (Systems). Ghost alpha is on `GhostMat`. Tune all of these in Play from what you see.
