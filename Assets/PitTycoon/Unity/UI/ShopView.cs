@@ -154,6 +154,19 @@ namespace PitTycoon.Unity.UI
             }
 
             ReapplySelection();
+            RebuildLayout();
+        }
+
+        // Rows are instantiated at runtime and the panel is shown the same frame, so the nested
+        // ContentSizeFitters/VerticalLayoutGroups don't settle until the next layout-dirtying event
+        // (e.g. selecting a row) — which left the panel looking cramped on first open. Force an
+        // immediate rebuild bottom-up (each section, then the panel) so it lays out correctly at once.
+        private void RebuildLayout()
+        {
+            if (upgradeContainer != null) LayoutRebuilder.ForceRebuildLayoutImmediate(upgradeContainer);
+            if (abilityContainer != null) LayoutRebuilder.ForceRebuildLayoutImmediate(abilityContainer);
+            if (buildContainer != null) LayoutRebuilder.ForceRebuildLayoutImmediate(buildContainer);
+            if (transform is RectTransform root) LayoutRebuilder.ForceRebuildLayoutImmediate(root);
         }
 
         private ShopRowWidget MakeRow(RectTransform parent, string label, string cost, bool afford)
