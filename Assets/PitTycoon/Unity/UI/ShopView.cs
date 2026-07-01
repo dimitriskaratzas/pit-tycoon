@@ -24,6 +24,8 @@ namespace PitTycoon.Unity.UI
         [SerializeField] private ShopRowWidget rowTemplate;
         [SerializeField] private Button startNextSetButton;
         [SerializeField] private Button returnHomeButton;
+        [Tooltip("Scroll view around the section stack (wired by Build HUD); reset to top on Show.")]
+        [SerializeField] private ScrollRect scroll;
 
         private EventBus _bus;
         private EconomySystem _economy;
@@ -74,6 +76,7 @@ namespace PitTycoon.Unity.UI
             if (bankedText != null) bankedText.text = bankedAmount > 0 ? $"banked +${bankedAmount}" : string.Empty;
             ClearSelectionState();
             Rebuild();
+            if (scroll != null) scroll.verticalNormalizedPosition = 1f;   // open at the top
         }
 
         public void Hide()

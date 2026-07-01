@@ -202,7 +202,7 @@ namespace PitTycoon.Unity.EditorTools
         {
             public TMP_Text cash; public TMP_Text banked; public RectTransform upgrades;
             public RectTransform abilities; public RectTransform builds; public ShopRowWidget template; public Button start;
-            public Button returnHome;
+            public Button returnHome; public ScrollRect scroll;
         }
 
         private static ShopView BuildShop(Transform parent, out ShopRefs r)
@@ -219,55 +219,81 @@ namespace PitTycoon.Unity.EditorTools
             ShopView view = go.AddComponent<ShopView>();
             r = new ShopRefs();
 
+            // The panel VLG controls child heights (childControlHeight = true) so the Scroll node
+            // below can flex-fill the space between the fixed header rows and the Start button.
+            // Every fixed child therefore carries an explicit LayoutElement height.
             var vlayout = go.AddComponent<VerticalLayoutGroup>();
             vlayout.padding = new RectOffset(12, 12, 12, 12);
-            vlayout.spacing = 8f; vlayout.childControlWidth = true; vlayout.childControlHeight = false;
+            vlayout.spacing = 8f; vlayout.childControlWidth = true; vlayout.childControlHeight = true;
             vlayout.childForceExpandWidth = true; vlayout.childForceExpandHeight = false;
 
             var header = NewUI("Cash", go.transform);
-            header.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 28f);
+            header.AddComponent<LayoutElement>().preferredHeight = 28f;
             r.cash = AddText(header, "$0", 18, TextAlignmentOptions.Right);
             r.cash.color = Amber;
 
             var banked = NewUI("Banked", go.transform);
-            banked.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 22f);
+            banked.AddComponent<LayoutElement>().preferredHeight = 22f;
             r.banked = AddText(banked, "", 14, TextAlignmentOptions.Center);
             r.banked.color = new Color(0.62f, 0.88f, 0.8f);
 
             var home = NewUI("ReturnHome", go.transform);
-            home.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 26f);
+            home.AddComponent<LayoutElement>().preferredHeight = 26f;
             var homeImg = AddImage(home, Bar); AddOutline(home);
             r.returnHome = home.AddComponent<Button>(); r.returnHome.targetGraphic = homeImg;
             var homeText = NewUI("Text", home.transform); Stretch(homeText.GetComponent<RectTransform>());
             AddText(homeText, "⌂ Overview", 12, TextAlignmentOptions.Center);
 
-            var upHead = NewUI("UpgradesLabel", go.transform);
+            // Scrollable section stack — the M4c roster outgrew the fixed panel, so the
+            // upgrade/ability/build sections scroll while the header + Start button stay put.
+            var scroll = NewUI("Scroll", go.transform);
+            var scrollLe = scroll.AddComponent<LayoutElement>();
+            scrollLe.flexibleHeight = 1f; scrollLe.minHeight = 60f;
+            scroll.AddComponent<RectMask2D>();
+            var scrollRect = scroll.AddComponent<ScrollRect>();
+
+            var content = NewUI("Content", scroll.transform);
+            var contentRT = content.GetComponent<RectTransform>();
+            contentRT.anchorMin = new Vector2(0f, 1f); contentRT.anchorMax = new Vector2(1f, 1f);
+            contentRT.pivot = new Vector2(0.5f, 1f); contentRT.sizeDelta = Vector2.zero;
+            var cl = content.AddComponent<VerticalLayoutGroup>();
+            cl.spacing = 8f; cl.childControlWidth = true; cl.childControlHeight = false;
+            cl.childForceExpandWidth = true; cl.childForceExpandHeight = false;
+            content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scrollRect.content = contentRT;      // viewport falls back to the Scroll node itself
+            scrollRect.horizontal = false; scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Clamped;
+            scrollRect.scrollSensitivity = 20f;
+            r.scroll = scrollRect;
+
+            var upHead = NewUI("UpgradesLabel", content.transform);
             upHead.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 18f);
             AddText(upHead, "UPGRADES", 12, TextAlignmentOptions.Left).color = new Color(0.6f, 0.6f, 0.6f);
 
-            var upgrades = NewUI("Upgrades", go.transform);
+            var upgrades = NewUI("Upgrades", content.transform);
             r.upgrades = upgrades.GetComponent<RectTransform>();
             var ul = upgrades.AddComponent<VerticalLayoutGroup>();
             ul.spacing = 6f; ul.childControlWidth = true; ul.childControlHeight = false;
             ul.childForceExpandWidth = true; ul.childForceExpandHeight = false;
             upgrades.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var abHead = NewUI("AbilitiesLabel", go.transform);
+            var abHead = NewUI("AbilitiesLabel", content.transform);
             abHead.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 18f);
             AddText(abHead, "ABILITIES", 12, TextAlignmentOptions.Left).color = new Color(0.6f, 0.6f, 0.6f);
 
-            var abilities = NewUI("Abilities", go.transform);
+            var abilities = NewUI("Abilities", content.transform);
             r.abilities = abilities.GetComponent<RectTransform>();
             var al = abilities.AddComponent<VerticalLayoutGroup>();
             al.spacing = 6f; al.childControlWidth = true; al.childControlHeight = false;
             al.childForceExpandWidth = true; al.childForceExpandHeight = false;
             abilities.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            var bdHead = NewUI("BuildLabel", go.transform);
+            var bdHead = NewUI("BuildLabel", content.transform);
             bdHead.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 18f);
             AddText(bdHead, "BUILD", 12, TextAlignmentOptions.Left).color = new Color(0.6f, 0.6f, 0.6f);
 
-            var builds = NewUI("Build", go.transform);
+            var builds = NewUI("Build", content.transform);
             r.builds = builds.GetComponent<RectTransform>();
             var bl = builds.AddComponent<VerticalLayoutGroup>();
             bl.spacing = 6f; bl.childControlWidth = true; bl.childControlHeight = false;
@@ -277,7 +303,7 @@ namespace PitTycoon.Unity.EditorTools
             r.template = BuildShopRowTemplate(go.transform);
 
             var start = NewUI("StartNextSet", go.transform);
-            start.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 40f);
+            start.AddComponent<LayoutElement>().preferredHeight = 40f;
             var startImg = AddImage(start, HypeOrange); AddOutline(start);
             r.start = start.AddComponent<Button>(); r.start.targetGraphic = startImg;
             var startText = NewUI("Text", start.transform);
@@ -369,6 +395,7 @@ namespace PitTycoon.Unity.EditorTools
             so.FindProperty("rowTemplate").objectReferenceValue = r.template;
             so.FindProperty("startNextSetButton").objectReferenceValue = r.start;
             so.FindProperty("returnHomeButton").objectReferenceValue = r.returnHome;
+            so.FindProperty("scroll").objectReferenceValue = r.scroll;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
