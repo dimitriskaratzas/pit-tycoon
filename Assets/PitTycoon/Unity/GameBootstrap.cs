@@ -26,6 +26,8 @@ namespace PitTycoon.Unity
         [SerializeField] private UpgradePreviewController preview;
         [Tooltip("Optional — wired by Build Festival Ground. Null = no build-spot system.")]
         [SerializeField] private BuildSystem builds;
+        [Tooltip("Optional — wired by Build Festival Ground. Null = no free-look camera.")]
+        [SerializeField] private FreeLookController freeLook;
 
         public EventBus Bus { get; private set; }
 
@@ -51,6 +53,7 @@ namespace PitTycoon.Unity
             abilities.Initialize(Bus);
             upgrades.Initialize(Bus);
             builds?.Initialize(Bus);
+            freeLook?.Initialize(Bus);
             setController.Initialize(Bus);
             beatVfx.Initialize(Bus);
             hud.Initialize(Bus, hype, economy, setController, abilities, upgrades, preview, builds);
