@@ -22,7 +22,7 @@ Build order: **M4a → M4b → M4c → M4d**. Each ships something playable on i
 
 1. **Control scheme:** **Civ-6-style.** `W/A/S/D` + arrow keys pan a focus point across the ground; hold **middle-mouse** and drag to orbit the **yaw**; **scroll wheel** zooms. The camera glides at a fixed tilt.
 2. **Fixed tilt, no pitch control (for M4b):** the camera **pitch is held** — there is no pitch input. Free-look adopts whatever pitch the camera had when it took control (normally the survey pose's tilt) and holds it. This keeps the framing readable and avoids awkward under-ground angles. Pitch control is explicitly out of scope.
-3. **Pan inputs:** keys + middle-mouse only. **Screen-edge push panning is out of scope** for M4b (fiddly in a windowed Editor, extra tuning surface) — it can be added later without changing the model.
+3. **Pan inputs:** `W/A/S/D` + arrow keys, **plus screen-edge push** — moving the cursor into a screen-edge margin scrolls the map in that direction (Civ-style), no keys held. Edge-push is suppressed while the pointer is over the shop panel (which occupies a screen edge) and when the cursor is outside the window, so it can't fight the shop or misfire when the mouse leaves the play area. It feeds the same `FreeLookRig.Pan()` as the keys — just another pan source.
 4. **Architecture:** a thin **`FreeLookController`** MonoBehaviour drives a **pure `FreeLookRig`** in `Domain/`. The rig owns the orbit state + all clamping and is unit-tested; the MonoBehaviour handles input polling and transform writes. This matches the codebase's spine (`HypeCalculator`, `EconomyCalculator`, `CrowdFill`, `UpgradePricing` are all pure + tested) and keeps `CameraRig` a dumb tweener.
 5. **Authored fly-to always wins:** free-look runs only when **`intermission && !CameraRig.IsTweening`**. Every authored move goes through `CameraRig.FlyTo`, which sets the tweening flag; free-look ignores input while tweening and **re-seeds from the landed pose** when the tween finishes.
 6. **Off during live sets:** `FreeLookController` subscribes to the set lifecycle on the `EventBus` (`SetStarted` → hard off, `SetEnded` → back on), the same self-contained pattern as `HypeSystem`.
@@ -31,14 +31,13 @@ Build order: **M4a → M4b → M4c → M4d**. Each ships something playable on i
 
 **In scope (M4b):**
 - A pure `Domain/FreeLookRig` (state + pan/orbit/zoom/resolve/seed + clamps) with unit tests.
-- A `Unity/FreeLookController` MonoBehaviour: input polling, UI-hover gating, transform writes, lifecycle enable/disable, re-seed after authored fly-tos.
+- A `Unity/FreeLookController` MonoBehaviour: input polling (keys + middle-mouse + screen-edge push), UI-hover gating, transform writes, lifecycle enable/disable, re-seed after authored fly-tos.
 - `CameraRig`: add `IsTweening`; remove the now-dead `SnapHome`/`ReturnHome`/`_homePos`/`_homeRot` (flagged unused in the M4a review).
 - `GameBootstrap`: optional serialized `FreeLookController` ref, initialized after the other systems.
 - `FestivalGroundSetup` (editor builder): add + seed `FreeLookController` on the Main Camera from the ground extents and survey pose.
 - SETUP.md section: build steps, verification, tuning.
 
 **Out of scope (M4b):**
-- Screen-edge push panning.
 - Pitch/tilt control.
 - The full structure roster and any new effect types — passive cash, multipliers, per-ability bonuses (M4c).
 - A second theme and the art-fidelity pass (M4d).
@@ -79,6 +78,7 @@ On the **Main Camera**, alongside `CameraRig`.
 **Serialized fields (bounds/speeds, tunable in Inspector, seeded by the editor builder):**
 - Pan rect `minX/maxX/minZ/maxZ`, `minDistance/maxDistance`, `focusY`.
 - `panSpeed` (units/sec), `orbitSpeed` (deg per pixel of mouse delta), `zoomSpeed` (units per scroll notch), `panDistanceFactor`.
+- `edgePanMargin` (pixels from a screen edge that trigger edge-push; set to 0 to disable edge-push without touching the keys).
 
 **Refs:**
 - `CameraRig rig` — to read `IsTweening`.
@@ -92,10 +92,13 @@ On the **Main Camera**, alongside `CameraRig`.
 1. If `!_intermission || rig == null || rig.IsTweening` → do nothing (this is where "authored fly-to wins" and "off during live sets" fall out).
 2. If the rig was tweening last frame and isn't now (just regained control), build a `CameraPose` from the camera's current transform and call `_rig.SeedFrom(...)` before reading input.
 3. Read input:
-   - Keyboard `W/A/S/D` + arrows → a `(right, forward)` vector → `Pan(...)` (scaled by `panSpeed * Time.unscaledDeltaTime`).
+   - Build a `(right, forward)` pan vector from **keyboard** `W/A/S/D` + arrows.
+   - **Edge-push:** if the pointer is inside the window and **not** over UI, and the cursor is within `edgePanMargin` pixels of a screen edge, add a unit contribution toward that edge to the pan vector (left/right edge → ∓right, top/bottom → ±forward; corners combine). `edgePanMargin <= 0` disables it.
+   - Apply the combined pan vector → `Pan(...)` (scaled by `panSpeed * Time.unscaledDeltaTime`).
    - If **not** over UI (`EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()`):
      - Middle-mouse held (`Mouse.current.middleButton.isPressed`) → `Mouse.current.delta` × `orbitSpeed` → `Orbit(deltaX)`.
      - `Mouse.current.scroll.y` (nonzero) × `zoomSpeed` → `Zoom(...)`.
+   - Cursor-in-window / over-UI checks use `Mouse.current.position` vs `Screen.width/height` and `EventSystem.IsPointerOverGameObject()`; keyboard pan is never gated.
 4. `var pose = _rig.Resolve();` → write `transform.SetPositionAndRotation(...)`.
 
 Uses `Time.unscaledDeltaTime` to match `CameraRig`'s tweens. Null-guards `Mouse.current`/`Keyboard.current` (they can be null with no device), same as `AbilitySystem`/`DebugHud`.
@@ -136,6 +139,7 @@ Target: existing **73 pass** stays green; new suite adds ~7 → **~80 passing**.
 ## Verification checklist (Editor checkpoint)
 
 - Enter intermission → `W/A/S/D`/arrows pan across the ground, clamped at the edges (can't roam off the map).
+- Push the cursor to a screen edge (not the shop side) → the camera scrolls that way; pull back to center → it stops. Moving toward the shop panel edge does **not** edge-push.
 - Middle-mouse drag orbits the yaw; scroll zooms between the min/max; tilt stays fixed.
 - Scrolling while the pointer is over the shop panel scrolls the list, **not** the camera.
 - Select a build spot → camera flies to it (free-look yields); on arrival you can orbit/pan/zoom around it; **⌂ Overview** flies back to the survey pose.
@@ -145,5 +149,5 @@ Target: existing **73 pass** stays green; new suite adds ~7 → **~80 passing**.
 
 ## Tuning knobs
 
-- `FreeLookController`: pan rect, min/max distance, `panSpeed`, `orbitSpeed`, `zoomSpeed`, `panDistanceFactor` — all in the Inspector, live-editable in Play.
+- `FreeLookController`: pan rect, min/max distance, `panSpeed`, `orbitSpeed`, `zoomSpeed`, `panDistanceFactor`, `edgePanMargin` (0 disables edge-push) — all in the Inspector, live-editable in Play.
 - Survey pose (on `UpgradePreviewController`) still frames the default overview; free-look seeds from it.
