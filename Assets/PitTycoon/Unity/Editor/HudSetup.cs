@@ -301,6 +301,10 @@ namespace PitTycoon.Unity.EditorTools
             builds.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             r.template = BuildShopRowTemplate(go.transform);
+            // Deactivate at build time: the panel VLG now controls child heights, and it must
+            // never size the template (clones would inherit a squashed height). ShopView also
+            // deactivates it at runtime, but by then the edit-mode layout would have run.
+            r.template.gameObject.SetActive(false);
 
             var start = NewUI("StartNextSet", go.transform);
             start.AddComponent<LayoutElement>().preferredHeight = 40f;
