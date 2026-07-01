@@ -104,13 +104,40 @@ namespace PitTycoon.Unity.EditorTools
             if (boot != null) SetRef(boot, "builds", buildSys);
             else Debug.LogWarning("FestivalGroundSetup: no GameBootstrap found in scene.");
 
+            // 9. FreeLookController on the Main Camera (M4b): bounds from the ~120u ground, zoom
+            //    around the survey pose's distance to the ground centre. Idempotent.
+            var freeLook = cam.GetComponent<FreeLookController>();
+            if (freeLook == null) freeLook = cam.gameObject.AddComponent<FreeLookController>();
+
+            var camRig = cam.GetComponent<CameraRig>();
+            if (camRig != null) SetRef(freeLook, "rig", camRig);
+            else Debug.LogWarning("FestivalGroundSetup: no CameraRig on the camera. Run Build Upgrade Preview first.");
+
+            var flSo = new SerializedObject(freeLook);
+            SetFloat(flSo, "minX", -58f);
+            SetFloat(flSo, "maxX", 58f);
+            SetFloat(flSo, "minZ", -58f);
+            SetFloat(flSo, "maxZ", 58f);
+            SetFloat(flSo, "focusY", 0f);
+            SetFloat(flSo, "minDistance", 20f);
+            SetFloat(flSo, "maxDistance", 90f);
+            SetFloat(flSo, "panSpeedPerDistance", 0.5f);
+            SetFloat(flSo, "orbitSpeed", 0.2f);
+            SetFloat(flSo, "zoomSpeed", 3f);
+            SetFloat(flSo, "edgePanMargin", 12f);
+            flSo.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(freeLook);
+
+            if (boot != null) SetRef(boot, "freeLook", freeLook);
+
             EditorUtility.SetDirty(spotsCtl);
             EditorUtility.SetDirty(buildSys);
             AssetDatabase.SaveAssets();
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene());
             Debug.Log("Pit Tycoon: Festival Ground built. Tune build-spot poses/costs/effects on " +
-                      "OpenAirLayout and survey/live poses on UpgradePreviewController (Systems).");
+                      "OpenAirLayout and survey/live poses on UpgradePreviewController (Systems). " +
+                      "Free-look bounds/speeds live on the Main Camera's FreeLookController.");
         }
 
         private static BuildSpot MakeSpot(string id, string label, GameObject prefab,
@@ -146,6 +173,13 @@ namespace PitTycoon.Unity.EditorTools
         {
             var p = so.FindProperty(field);
             if (p != null) p.vector3Value = value;
+            else Debug.LogWarning($"FestivalGroundSetup: field '{field}' not found on {so.targetObject.GetType().Name}.");
+        }
+
+        private static void SetFloat(SerializedObject so, string field, float value)
+        {
+            var p = so.FindProperty(field);
+            if (p != null) p.floatValue = value;
             else Debug.LogWarning($"FestivalGroundSetup: field '{field}' not found on {so.targetObject.GetType().Name}.");
         }
     }
