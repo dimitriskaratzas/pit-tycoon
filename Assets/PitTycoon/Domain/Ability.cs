@@ -38,6 +38,16 @@ namespace PitTycoon.Domain
         public double CooldownRemaining { get; private set; }
         public bool CanFire => Owned && CooldownRemaining <= 0.0;
 
+        /// <summary>Structure effect (M4c): multiplier on the hype spike, default 1. Bonuses
+        /// accumulate additively (two +0.5 structures => x2).</summary>
+        public float SpikeBonus { get; private set; } = 1f;
+
+        public void AddSpikeBonus(float pct)
+        {
+            if (pct < 0f) throw new ArgumentOutOfRangeException(nameof(pct));
+            SpikeBonus += pct;
+        }
+
         public Ability(string id, float baseSpike, float maxMultiplier,
             double toleranceSeconds, double cooldown, bool ownedFromStart)
         {
@@ -62,7 +72,7 @@ namespace PitTycoon.Domain
         {
             if (!CanFire) return FireResult.NotFired;
             float mult = BeatWindow.Multiplier(nearestBeatDspTime, now, _tolerance, _maxMultiplier);
-            float hypeAdded = _baseSpike * mult;
+            float hypeAdded = _baseSpike * mult * SpikeBonus;
             float onBeat01 = (mult - 1f) / Math.Max(0.0001f, _maxMultiplier - 1f);
             HitQuality quality = onBeat01 >= 0.66f ? HitQuality.Perfect
                                : onBeat01 >= 0.25f ? HitQuality.Good
