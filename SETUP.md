@@ -275,3 +275,32 @@ festival ground; authored fly-tos still win and free-look is off during live set
 **Tuning** (Main Camera → `FreeLookController`, live-editable in Play):
 pan rect `minX/maxX/minZ/maxZ`, `minDistance/maxDistance`, `panSpeedPerDistance`, `orbitSpeed`,
 `zoomSpeed`, `edgePanMargin` (set to 0 to disable edge-push).
+
+## Structure roster + economy (M4c — full roster, new effects)
+
+Grows the festival ground to ~11 buildable structures and adds three new effect types:
+passive cash (flat per set-end), cash multiplier (+pct on hype->cash), and targeted
+ability spike (+pct on one ability's hype). All numeric logic is in Domain behind tests.
+
+**Build steps**
+1. Pull the branch and let Unity recompile (Domain: EconomyCalculator/Ability; Unity:
+   VenueLayout/EconomySystem/AbilitySystem/BuildSystem; Editor: greybox prefabs + setup).
+2. Run **Pit Tycoon → Build Festival Ground** (after Build HUD + Build Upgrade Preview, as
+   before). It ensures the 8 new greybox prefabs, rewrites OpenAirLayout with the full
+   roster, and wires BuildSystem.abilities.
+3. Commit the new prefab + .meta files, the updated OpenAirLayout.asset, and the scene.
+
+**Play-test verification**
+- Build **Food Court** or **Bar** → the next set-end banks visibly more cash (bigger coin
+  burst) even at similar hype; the bonus persists across sets.
+- Build **VIP Lounge** / **Sponsor Banner** → the same hype yields more cash; both together
+  stack (x1.25).
+- Build **Amp Stack** → the Woofer's hype spike is visibly bigger; **Strobe Rig** → Light-burst;
+  **Speaker Wall** → Whirlpool. Abilities you didn't boost are unchanged.
+- All ~11 spots appear as Build rows, ghost-preview with a camera fly-to, rise on purchase,
+  and persist (structures + effects) across sets.
+- Regression: M1–M4b intact — upgrades, abilities, crowd, free-look camera, F1 overlay.
+
+**Tuning** (OpenAirLayout asset, live in the Inspector): per-spot cost, effectMagnitude,
+targetAbilityId, world pose, camera pose. Passive/multiplier magnitudes are deliberately
+raw starting values — the tycoon curve rework is a later milestone.
