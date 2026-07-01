@@ -248,3 +248,30 @@ scene + venue are built (M2b).
    - F1 dev overlay and M1/M2/M3 behavior (abilities, VFX, coins, venue scaling, crowd fill, upgrade ghost-preview) all intact.
 
 **Tuning:** build-spot poses, costs, and effect magnitudes live on `OpenAirLayout`; the wide **survey** pose, the close **live** pose, and per-spot camera waypoints live on `UpgradePreviewController` (Systems). Ghost alpha is on `GhostMat`. Tune all of these in Play from what you see.
+
+## Free-look camera (M4b — Civ-style intermission camera)
+
+Adds a bounded pan / orbit / zoom camera during the intermission. Layers on the M4a
+festival ground; authored fly-tos still win and free-look is off during live sets.
+
+**Build steps**
+1. Pull the branch and let Unity recompile (new `FreeLookRig` in Domain, `FreeLookController`
+   in Unity, edited `CameraRig`/`GameBootstrap`/`FestivalGroundSetup`).
+2. Run, in order: **Pit Tycoon → Build HUD → Build Upgrade Preview → Build Festival Ground**.
+   The last step now also adds a `FreeLookController` to the Main Camera and seeds its bounds
+   and speeds, and wires `GameBootstrap.freeLook`.
+3. Commit the modified scene + any new `.meta` files.
+
+**Play-test verification**
+- In intermission: `W/A/S/D`/arrows pan across the ground, clamped at the edges (can't roam off).
+- Push the cursor to a screen edge (not the shop side) → the camera scrolls that way; center it → stops.
+- Middle-mouse drag orbits the yaw; scroll zooms between min/max; tilt stays fixed.
+- Scrolling over the shop panel scrolls the list, not the camera.
+- Select a build spot → camera flies there (free-look yields); on arrival you can orbit/pan/zoom;
+  **⌂ Overview** flies back to the survey pose.
+- **Start Next Set** → camera flies to the live pose and free-look is dead for the whole set.
+- Regression: M1–M4a all still work; F1 overlay intact.
+
+**Tuning** (Main Camera → `FreeLookController`, live-editable in Play):
+pan rect `minX/maxX/minZ/maxZ`, `minDistance/maxDistance`, `panSpeedPerDistance`, `orbitSpeed`,
+`zoomSpeed`, `edgePanMargin` (set to 0 to disable edge-push).
