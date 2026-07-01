@@ -4,9 +4,10 @@ using PitTycoon.Domain;
 namespace PitTycoon.Unity.UI
 {
     /// <summary>
-    /// Top-level HUD root. Initializes the two views, then toggles Live <-> Shop on the set
-    /// lifecycle: SetStarted shows the live HUD (and force-clears any open upgrade preview so a
-    /// set never begins mid-ghost), SetEnded shows the intermission shop with the banked amount.
+    /// Top-level HUD root. Initializes the two views, then toggles Live &lt;-&gt; Shop on the set
+    /// lifecycle: SetStarted flies the camera to the live pose and shows the live HUD;
+    /// SetEnded shows the intermission shop with the banked amount and pulls the camera
+    /// back to the survey overview for building.
     /// </summary>
     public sealed class HudController : MonoBehaviour
     {
@@ -18,13 +19,13 @@ namespace PitTycoon.Unity.UI
 
         public void Initialize(EventBus bus, HypeSystem hype, EconomySystem economy,
                                SetController set, AbilitySystem abilities, UpgradeSystem upgrades,
-                               UpgradePreviewController preview)
+                               UpgradePreviewController preview, BuildSystem builds)
         {
             _bus = bus;
             _preview = preview;
 
             if (liveView != null) liveView.Initialize(bus, hype, economy, set, abilities);
-            if (shopView != null) shopView.Initialize(bus, economy, set, abilities, upgrades, preview);
+            if (shopView != null) shopView.Initialize(bus, economy, set, abilities, upgrades, preview, builds);
 
             _bus.Subscribe<SetStarted>(OnSetStarted);
             _bus.Subscribe<SetEnded>(OnSetEnded);
@@ -43,7 +44,7 @@ namespace PitTycoon.Unity.UI
 
         private void OnSetStarted(SetStarted e)
         {
-            _preview?.ForceClear();
+            _preview?.GoToLive();          // clears any ghost + flies the camera down to the stage/crowd
             if (shopView != null) shopView.Hide();
             if (liveView != null) liveView.Show();
         }
@@ -52,6 +53,7 @@ namespace PitTycoon.Unity.UI
         {
             if (liveView != null) liveView.Hide();
             if (shopView != null) shopView.Show(e.CashEarned);
+            _preview?.GoToSurvey();        // pull back to the wide overview for building
         }
     }
 }

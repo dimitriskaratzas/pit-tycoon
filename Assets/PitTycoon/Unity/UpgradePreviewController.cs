@@ -23,12 +23,21 @@ namespace PitTycoon.Unity
         [SerializeField] private VenueController venue;
         [SerializeField] private CrowdController crowd;
         [SerializeField] private AbilitySystem abilities;
+        [SerializeField] private BuildSpotController buildSpots;
 
         [Header("Camera waypoints (filled by Build Upgrade Preview, tune in play)")]
         [SerializeField] private PreviewWaypoint[] waypoints;
         [SerializeField] private Vector3 abilityCamPosition = new Vector3(0f, 9f, -11f);
         [SerializeField] private Vector3 abilityCamEuler = new Vector3(30f, 0f, 0f);
         [SerializeField] private float flyDuration = 0.6f;
+
+        [Header("Resting camera poses (filled by Build Festival Ground, tune in play)")]
+        [Tooltip("Wide overview of the whole ground — the intermission resting pose.")]
+        [SerializeField] private Vector3 surveyCamPosition = new Vector3(0f, 45f, -55f);
+        [SerializeField] private Vector3 surveyCamEuler = new Vector3(40f, 0f, 0f);
+        [Tooltip("Close to the stage/crowd — the live-set resting pose (= the camera's start pose).")]
+        [SerializeField] private Vector3 liveCamPosition = new Vector3(0f, 9f, -11f);
+        [SerializeField] private Vector3 liveCamEuler = new Vector3(20f, 0f, 0f);
 
         public void BeginUpgradePreview(UpgradeDefinition def, int nextLevel)
         {
@@ -46,21 +55,31 @@ namespace PitTycoon.Unity
             if (rig != null) rig.FlyTo(abilityCamPosition, Quaternion.Euler(abilityCamEuler), flyDuration);
         }
 
+        public void BeginBuildPreview(BuildSpot spot)
+        {
+            ClearGhost();
+            if (buildSpots != null) buildSpots.PreviewSpot(spot.id);
+            if (rig != null) rig.FlyTo(spot.cameraPosition, Quaternion.Euler(spot.cameraEuler), flyDuration);
+        }
+
         /// <summary>Back out of the current preview without moving the camera.</summary>
         public void Cancel() => ClearGhost();
 
-        /// <summary>Clear the preview and tween the camera back to the overview.</summary>
-        public void ReturnHome()
+        /// <summary>Clear the preview and fly to the wide survey pose (⌂ Overview, intermission start).</summary>
+        public void ReturnHome() => GoToSurvey();
+
+        /// <summary>Fly to the wide survey pose (intermission). Clears any active ghost.</summary>
+        public void GoToSurvey()
         {
             ClearGhost();
-            if (rig != null) rig.ReturnHome();
+            if (rig != null) rig.FlyTo(surveyCamPosition, Quaternion.Euler(surveyCamEuler), flyDuration);
         }
 
-        /// <summary>Clear the preview and snap the camera home instantly (set start).</summary>
-        public void ForceClear()
+        /// <summary>Fly to the close live pose (set start). Clears any active ghost so no set begins mid-ghost.</summary>
+        public void GoToLive()
         {
             ClearGhost();
-            if (rig != null) rig.SnapHome();
+            if (rig != null) rig.FlyTo(liveCamPosition, Quaternion.Euler(liveCamEuler), flyDuration);
         }
 
         private void OnDestroy() => ClearGhost();
@@ -81,6 +100,7 @@ namespace PitTycoon.Unity
         {
             if (venue != null) venue.ClearPreview();
             if (crowd != null) crowd.ClearPreview();
+            if (buildSpots != null) buildSpots.ClearPreview();
         }
 
         private void FlyToKind(UpgradeKind kind)

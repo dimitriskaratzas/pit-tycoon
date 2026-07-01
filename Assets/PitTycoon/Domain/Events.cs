@@ -55,4 +55,11 @@ namespace PitTycoon.Domain
         public string AbilityId { get; }
         public AbilityUnlocked(string abilityId) { AbilityId = abilityId; }
     }
+
+    /// <summary>Raised when a build-spot structure is built during intermission.</summary>
+    public readonly struct StructureBuilt
+    {
+        public string SpotId { get; }
+        public StructureBuilt(string spotId) { SpotId = spotId; }
+    }
 }

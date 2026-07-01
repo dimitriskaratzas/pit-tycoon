@@ -201,7 +201,7 @@ namespace PitTycoon.Unity.EditorTools
         private struct ShopRefs
         {
             public TMP_Text cash; public TMP_Text banked; public RectTransform upgrades;
-            public RectTransform abilities; public ShopRowWidget template; public Button start;
+            public RectTransform abilities; public RectTransform builds; public ShopRowWidget template; public Button start;
             public Button returnHome;
         }
 
@@ -262,6 +262,17 @@ namespace PitTycoon.Unity.EditorTools
             al.spacing = 6f; al.childControlWidth = true; al.childControlHeight = false;
             al.childForceExpandWidth = true; al.childForceExpandHeight = false;
             abilities.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var bdHead = NewUI("BuildLabel", go.transform);
+            bdHead.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 18f);
+            AddText(bdHead, "BUILD", 12, TextAlignmentOptions.Left).color = new Color(0.6f, 0.6f, 0.6f);
+
+            var builds = NewUI("Build", go.transform);
+            r.builds = builds.GetComponent<RectTransform>();
+            var bl = builds.AddComponent<VerticalLayoutGroup>();
+            bl.spacing = 6f; bl.childControlWidth = true; bl.childControlHeight = false;
+            bl.childForceExpandWidth = true; bl.childForceExpandHeight = false;
+            builds.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             r.template = BuildShopRowTemplate(go.transform);
 
@@ -354,6 +365,7 @@ namespace PitTycoon.Unity.EditorTools
             so.FindProperty("bankedText").objectReferenceValue = r.banked;
             so.FindProperty("upgradeContainer").objectReferenceValue = r.upgrades;
             so.FindProperty("abilityContainer").objectReferenceValue = r.abilities;
+            so.FindProperty("buildContainer").objectReferenceValue = r.builds;
             so.FindProperty("rowTemplate").objectReferenceValue = r.template;
             so.FindProperty("startNextSetButton").objectReferenceValue = r.start;
             so.FindProperty("returnHomeButton").objectReferenceValue = r.returnHome;

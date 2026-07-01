@@ -20,6 +20,7 @@ namespace PitTycoon.Unity.UI
         [SerializeField] private TMP_Text bankedText;
         [SerializeField] private RectTransform upgradeContainer;
         [SerializeField] private RectTransform abilityContainer;
+        [SerializeField] private RectTransform buildContainer;
         [SerializeField] private ShopRowWidget rowTemplate;
         [SerializeField] private Button startNextSetButton;
         [SerializeField] private Button returnHomeButton;
@@ -30,20 +31,23 @@ namespace PitTycoon.Unity.UI
         private AbilitySystem _abilities;
         private UpgradeSystem _upgrades;
         private UpgradePreviewController _preview;
+        private BuildSystem _builds;
 
         private readonly List<ShopRowWidget> _rows = new List<ShopRowWidget>();
         private readonly Dictionary<ShopRowWidget, UpgradeDefinition> _rowUpgrade = new Dictionary<ShopRowWidget, UpgradeDefinition>();
         private readonly Dictionary<ShopRowWidget, AbilityDefinition> _rowAbility = new Dictionary<ShopRowWidget, AbilityDefinition>();
+        private readonly Dictionary<ShopRowWidget, BuildSpot> _rowBuild = new Dictionary<ShopRowWidget, BuildSpot>();
         private ShopRowWidget _selected;
         private UpgradeDefinition _selectedUpgrade;
         private AbilityDefinition _selectedAbility;
+        private string _selectedBuildId;   // builds are structs -> track selection by id
 
         public void Initialize(EventBus bus, EconomySystem economy, SetController set,
                                AbilitySystem abilities, UpgradeSystem upgrades,
-                               UpgradePreviewController preview)
+                               UpgradePreviewController preview, BuildSystem builds)
         {
             _bus = bus; _economy = economy; _set = set; _abilities = abilities;
-            _upgrades = upgrades; _preview = preview;
+            _upgrades = upgrades; _preview = preview; _builds = builds;
 
             if (rowTemplate != null) rowTemplate.gameObject.SetActive(false);
             if (startNextSetButton != null) startNextSetButton.onClick.AddListener(OnStartNextSet);
@@ -51,6 +55,7 @@ namespace PitTycoon.Unity.UI
 
             _bus.Subscribe<UpgradePurchased>(OnUpgradePurchased);
             _bus.Subscribe<AbilityUnlocked>(OnAbilityUnlocked);
+            _bus.Subscribe<StructureBuilt>(OnStructureBuilt);
         }
 
         private void OnDestroy()
@@ -60,6 +65,7 @@ namespace PitTycoon.Unity.UI
             if (_bus == null) return;
             _bus.Unsubscribe<UpgradePurchased>(OnUpgradePurchased);
             _bus.Unsubscribe<AbilityUnlocked>(OnAbilityUnlocked);
+            _bus.Unsubscribe<StructureBuilt>(OnStructureBuilt);
         }
 
         public void Show(int bankedAmount)
@@ -77,16 +83,17 @@ namespace PitTycoon.Unity.UI
             gameObject.SetActive(false);
         }
 
-        private void OnStartNextSet() { if (_set != null) _set.StartNextSet(); }   // HudController ForceClears on SetStarted
+        private void OnStartNextSet() { if (_set != null) _set.StartNextSet(); }   // HudController flies the camera to the live pose on SetStarted
         private void OnReturnHome() { ClearSelectionState(); _preview?.ReturnHome(); }
         private void OnUpgradePurchased(UpgradePurchased e) => RefreshIfVisible();
         private void OnAbilityUnlocked(AbilityUnlocked e) => RefreshIfVisible();
+        private void OnStructureBuilt(StructureBuilt e) => RefreshIfVisible();
         private void RefreshIfVisible() { if (gameObject.activeSelf) Rebuild(); }
 
         private void ClearSelectionState()
         {
             if (_selected != null && _selected.Actions != null) _selected.Actions.SetActive(false);
-            _selected = null; _selectedUpgrade = null; _selectedAbility = null;
+            _selected = null; _selectedUpgrade = null; _selectedAbility = null; _selectedBuildId = null;
         }
 
         private void Rebuild()
@@ -95,6 +102,7 @@ namespace PitTycoon.Unity.UI
             _rows.Clear();
             _rowUpgrade.Clear();
             _rowAbility.Clear();
+            _rowBuild.Clear();
 
             if (cashText != null && _economy != null) cashText.text = $"${_economy.Cash}";
 
@@ -130,7 +138,35 @@ namespace PitTycoon.Unity.UI
                 }
             }
 
+            if (_builds != null && buildContainer != null && rowTemplate != null)
+            {
+                foreach (var s in _builds.Spots)
+                {
+                    if (_builds.IsBuilt(s)) continue;
+                    bool afford = _builds.CanAfford(s);
+                    ShopRowWidget row = MakeRow(buildContainer, s.label, $"${s.cost}", afford);
+                    _rowBuild[row] = s;
+                    BuildSpot captured = s;
+                    if (row.Button != null) row.Button.onClick.AddListener(() => SelectBuild(row, captured));
+                    if (row.BuyButton != null) row.BuyButton.onClick.AddListener(() => BuyBuild(captured));
+                    if (row.CancelButton != null) row.CancelButton.onClick.AddListener(OnCancelButton);
+                }
+            }
+
             ReapplySelection();
+            RebuildLayout();
+        }
+
+        // Rows are instantiated at runtime and the panel is shown the same frame, so the nested
+        // ContentSizeFitters/VerticalLayoutGroups don't settle until the next layout-dirtying event
+        // (e.g. selecting a row) — which left the panel looking cramped on first open. Force an
+        // immediate rebuild bottom-up (each section, then the panel) so it lays out correctly at once.
+        private void RebuildLayout()
+        {
+            if (upgradeContainer != null) LayoutRebuilder.ForceRebuildLayoutImmediate(upgradeContainer);
+            if (abilityContainer != null) LayoutRebuilder.ForceRebuildLayoutImmediate(abilityContainer);
+            if (buildContainer != null) LayoutRebuilder.ForceRebuildLayoutImmediate(buildContainer);
+            if (transform is RectTransform root) LayoutRebuilder.ForceRebuildLayoutImmediate(root);
         }
 
         private ShopRowWidget MakeRow(RectTransform parent, string label, string cost, bool afford)
@@ -149,7 +185,7 @@ namespace PitTycoon.Unity.UI
         {
             if (_upgrades == null) return;
             SetSelected(row);
-            _selectedUpgrade = def; _selectedAbility = null;
+            _selectedUpgrade = def; _selectedAbility = null; _selectedBuildId = null;
             if (row.BuyButton != null) row.BuyButton.interactable = _upgrades.CanAfford(def);
             _preview?.BeginUpgradePreview(def, _upgrades.LevelOf(def) + 1);
         }
@@ -158,9 +194,18 @@ namespace PitTycoon.Unity.UI
         {
             if (_abilities == null) return;
             SetSelected(row);
-            _selectedAbility = def; _selectedUpgrade = null;
+            _selectedAbility = def; _selectedUpgrade = null; _selectedBuildId = null;
             if (row.BuyButton != null) row.BuyButton.interactable = _abilities.CanAfford(def);
             _preview?.BeginAbilityPreview(def);
+        }
+
+        private void SelectBuild(ShopRowWidget row, BuildSpot spot)
+        {
+            if (_builds == null) return;
+            SetSelected(row);
+            _selectedBuildId = spot.id; _selectedUpgrade = null; _selectedAbility = null;
+            if (row.BuyButton != null) row.BuyButton.interactable = _builds.CanAfford(spot);
+            _preview?.BeginBuildPreview(spot);
         }
 
         private void SetSelected(ShopRowWidget row)
@@ -183,6 +228,13 @@ namespace PitTycoon.Unity.UI
             _abilities?.TryUnlock(def);
         }
 
+        private void BuyBuild(BuildSpot spot)
+        {
+            // TryBuild publishes StructureBuilt -> Rebuild; the now-built spot drops from the list,
+            // so ReapplySelection clears the selection and the preview (real structure already raised).
+            _builds?.TryBuild(spot);
+        }
+
         private void OnCancelButton()
         {
             ClearSelectionState();
@@ -203,6 +255,18 @@ namespace PitTycoon.Unity.UI
                 if (row != null) SelectAbility(row, _selectedAbility);
                 else { ClearSelectionState(); _preview?.Cancel(); }
             }
+            else if (_selectedBuildId != null)
+            {
+                ShopRowWidget row = FindBuildRow(_selectedBuildId);
+                if (row != null) SelectBuild(row, _rowBuild[row]);
+                else { ClearSelectionState(); _preview?.Cancel(); }
+            }
+        }
+
+        private ShopRowWidget FindBuildRow(string id)
+        {
+            foreach (var kv in _rowBuild) if (kv.Value.id == id) return kv.Key;
+            return null;
         }
 
         private static ShopRowWidget FindRow<T>(Dictionary<ShopRowWidget, T> map, T value) where T : Object

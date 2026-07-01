@@ -24,6 +24,8 @@ namespace PitTycoon.Unity
         [SerializeField] private HudController hud;
         [Tooltip("Optional — wired by Build Upgrade Preview. Null = no camera/ghost preview.")]
         [SerializeField] private UpgradePreviewController preview;
+        [Tooltip("Optional — wired by Build Festival Ground. Null = no build-spot system.")]
+        [SerializeField] private BuildSystem builds;
 
         public EventBus Bus { get; private set; }
 
@@ -48,9 +50,10 @@ namespace PitTycoon.Unity
             hype.SetCrowdMeter(crowd);               // crowd passed as ICrowdMeter
             abilities.Initialize(Bus);
             upgrades.Initialize(Bus);
+            builds?.Initialize(Bus);
             setController.Initialize(Bus);
             beatVfx.Initialize(Bus);
-            hud.Initialize(Bus, hype, economy, setController, abilities, upgrades, preview);
+            hud.Initialize(Bus, hype, economy, setController, abilities, upgrades, preview, builds);
             // SetController.Start() (after all Awakes) kicks off set 1.
         }
 
