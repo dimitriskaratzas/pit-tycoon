@@ -29,5 +29,11 @@ namespace PitTycoon.Unity
 
         public bool CanAfford(int cost) => _calc.CanAfford(cost);
         public bool TrySpend(int cost) => _calc.TrySpend(cost);
+
+        /// <summary>Structure effect (M4c): flat cash added on top of every set-end bank.</summary>
+        public void AddPassiveIncome(int delta) => _calc.AddPassiveIncome(delta);
+
+        /// <summary>Structure effect (M4c): additively raise the hype->cash multiplier.</summary>
+        public void AddCashMultiplier(float pct) => _calc.AddCashMultiplier(pct);
     }
 }

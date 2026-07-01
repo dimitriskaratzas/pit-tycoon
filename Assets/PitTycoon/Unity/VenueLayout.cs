@@ -2,12 +2,14 @@ using UnityEngine;
 
 namespace PitTycoon.Unity
 {
-    /// <summary>What kind of effect a build spot grants when built. M4a reuses existing
-    /// effect primitives only (hype rate, crowd capacity); new kinds are M4c.</summary>
+    /// <summary>What kind of effect a build spot grants when built.</summary>
     public enum BuildEffectKind
     {
-        HypeRate,   // -> HypeSystem.RaiseRate(effectMagnitude)
-        Capacity    // -> CrowdController.RaiseCapacity(round(effectMagnitude))
+        HypeRate,       // -> HypeSystem.RaiseRate(effectMagnitude)
+        Capacity,       // -> CrowdController.RaiseCapacity(round(effectMagnitude))
+        PassiveCash,    // -> EconomySystem.AddPassiveIncome(round(effectMagnitude)): flat cash per set-end
+        CashMultiplier, // -> EconomySystem.AddCashMultiplier(effectMagnitude): +pct on hype->cash
+        AbilitySpike    // -> AbilitySystem.AddSpikeBonus(targetAbilityId, effectMagnitude): +pct spike
     }
 
     /// <summary>One authored build spot on the festival ground: a structure prefab that rises
@@ -26,6 +28,7 @@ namespace PitTycoon.Unity
         public int cost;
         public BuildEffectKind effect;
         public float effectMagnitude;     // rate delta, or capacity (rounded to int)
+        public string targetAbilityId;    // AbilitySpike only: the Ability.Id to boost (e.g. "woofer"); empty otherwise
         public Color color;               // optional row tint
     }
 

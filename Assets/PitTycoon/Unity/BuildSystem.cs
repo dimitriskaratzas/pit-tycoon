@@ -7,14 +7,17 @@ namespace PitTycoon.Unity
     /// <summary>
     /// One-shot purchase transaction for build spots (mirrors UpgradeSystem, but a spot is built
     /// once — not leveled). On TryBuild: spends via EconomySystem, applies the spot's effect via
-    /// existing primitives (HypeSystem.RaiseRate / CrowdController.RaiseCapacity), asks
-    /// BuildSpotController to raise the structure, and publishes StructureBuilt. Owns no geometry.
+    /// existing primitives (HypeSystem.RaiseRate / CrowdController.RaiseCapacity) or M4c structure
+    /// effects (EconomySystem.AddPassiveIncome / AddCashMultiplier, AbilitySystem.AddSpikeBonus),
+    /// asks BuildSpotController to raise the structure, and publishes StructureBuilt. Owns no
+    /// geometry.
     /// </summary>
     public sealed class BuildSystem : MonoBehaviour
     {
         [SerializeField] private EconomySystem economy;
         [SerializeField] private HypeSystem hype;
         [SerializeField] private CrowdController crowd;
+        [SerializeField] private AbilitySystem abilities;
         [SerializeField] private BuildSpotController spots;
 
         private EventBus _bus;
@@ -40,6 +43,9 @@ namespace PitTycoon.Unity
             {
                 case BuildEffectKind.HypeRate: hype?.RaiseRate(spot.effectMagnitude); break;
                 case BuildEffectKind.Capacity: crowd?.RaiseCapacity(Mathf.RoundToInt(spot.effectMagnitude)); break;
+                case BuildEffectKind.PassiveCash: economy.AddPassiveIncome(Mathf.RoundToInt(spot.effectMagnitude)); break;
+                case BuildEffectKind.CashMultiplier: economy.AddCashMultiplier(spot.effectMagnitude); break;
+                case BuildEffectKind.AbilitySpike: abilities?.AddSpikeBonus(spot.targetAbilityId, spot.effectMagnitude); break;
             }
 
             spots.Build(spot.id);
