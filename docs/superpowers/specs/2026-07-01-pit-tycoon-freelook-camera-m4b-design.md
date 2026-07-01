@@ -1,7 +1,7 @@
 # Pit Tycoon — Free-Look Survey Camera (Milestone 4, sub-project B) Design
 
 **Date:** 2026-07-01
-**Milestone:** "The Festival Ground" — sub-project **B** (free-look camera) of four. Builds directly on M4a (open ground + build spots, PR #13) and sub-project B's `CameraRig` (PRs #11/#12).
+**Milestone:** "The Festival Ground" — sub-project **M4b** (free-look camera) of four. Builds directly on M4a (open ground + build spots, PR #13) and the `CameraRig` introduced in the earlier Real-UI ghost-preview work (PRs #11/#12).
 
 ## Summary
 
