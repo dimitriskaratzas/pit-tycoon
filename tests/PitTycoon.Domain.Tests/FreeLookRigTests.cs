@@ -120,6 +120,15 @@ namespace PitTycoon.Domain.Tests
         }
 
         [Test]
+        public void SeedFrom_NormalizesPitchAbove180ToSignedRange()
+        {
+            var r = Wide();
+            // eulerAngles.x of 340 means a 20-degree upward tilt; must normalize to -20, not stay 340.
+            r.SeedFrom(new CameraPose(0f, 5f, 0f, 0f, 340f));
+            Assert.That(r.Pitch, Is.EqualTo(-20f).Within(1e-3f));
+        }
+
+        [Test]
         public void Constructor_RejectsBadRanges()
         {
             Assert.That(() => new FreeLookRig(10f, -10f, 0f, 1f, 1f, 2f, 0f, 0.1f),

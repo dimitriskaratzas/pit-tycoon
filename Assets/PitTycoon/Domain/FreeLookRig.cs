@@ -98,7 +98,9 @@ namespace PitTycoon.Domain
         public void SeedFrom(CameraPose pose)
         {
             Yaw = Wrap360(pose.Yaw);
-            Pitch = pose.Pitch;
+            // Normalize to (-180,180] so a pose whose eulerAngles.x reads >180 (an upward tilt
+            // represented as e.g. 340) doesn't flip sin(pitch) negative and distort the recovery.
+            Pitch = WrapSigned180(pose.Pitch);
             float pitchRad = Pitch * Deg2Rad;
             float yawRad = Yaw * Deg2Rad;
             float sinP = (float)Math.Sin(pitchRad);
@@ -111,5 +113,6 @@ namespace PitTycoon.Domain
 
         private static float Clamp(float v, float lo, float hi) => v < lo ? lo : (v > hi ? hi : v);
         private static float Wrap360(float d) { d %= 360f; return d < 0f ? d + 360f : d; }
+        private static float WrapSigned180(float d) { d = Wrap360(d); return d > 180f ? d - 360f : d; }
     }
 }
