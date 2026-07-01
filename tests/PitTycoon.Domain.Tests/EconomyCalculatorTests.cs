@@ -74,5 +74,70 @@ namespace PitTycoon.Domain.Tests
             Assert.That(ok, Is.False);
             Assert.That(e.Cash, Is.EqualTo(30));
         }
+
+        // ---- M4c: passive income + cash multiplier ----
+
+        [Test]
+        public void AddPassiveIncome_AddsFlatAmountToBankedCash()
+        {
+            var e = new EconomyCalculator(0);
+            e.AddPassiveIncome(25);
+            int earned = e.BankSet(100f, 0f, 1f, 0f);   // round(100*1) + 25
+            Assert.That(earned, Is.EqualTo(125));
+            Assert.That(e.Cash, Is.EqualTo(125));
+            Assert.That(e.PassiveIncome, Is.EqualTo(25));
+        }
+
+        [Test]
+        public void AddCashMultiplier_ScalesHypeEarnings()
+        {
+            var e = new EconomyCalculator(0);
+            e.AddCashMultiplier(0.5f);                   // multiplier 1.5
+            int earned = e.BankSet(100f, 0f, 1f, 0f);    // round(100*1.5)
+            Assert.That(earned, Is.EqualTo(150));
+        }
+
+        [Test]
+        public void PassiveAndMultiplier_Stack_MultiplierDoesNotScalePassive()
+        {
+            var e = new EconomyCalculator(0);
+            e.AddPassiveIncome(10);
+            e.AddCashMultiplier(0.5f);
+            int earned = e.BankSet(100f, 0f, 1f, 0f);    // round(100*1.5) + 10, NOT round(110*1.5)
+            Assert.That(earned, Is.EqualTo(160));
+        }
+
+        [Test]
+        public void CashMultiplier_AccumulatesAdditively()
+        {
+            var e = new EconomyCalculator(0);
+            e.AddCashMultiplier(0.15f);
+            e.AddCashMultiplier(0.15f);
+            Assert.That(e.CashMultiplier, Is.EqualTo(1.3f).Within(1e-4f));
+            int earned = e.BankSet(100f, 0f, 1f, 0f);
+            Assert.That(earned, Is.EqualTo(130));
+        }
+
+        [Test]
+        public void Defaults_ReproduceOldFormula()
+        {
+            var e = new EconomyCalculator(0);            // no passive, multiplier 1
+            int earned = e.BankSet(100f, 50f, 0.5f, 0.5f);
+            Assert.That(earned, Is.EqualTo(75));         // identical to the pre-M4c behavior
+        }
+
+        [Test]
+        public void AddPassiveIncome_Negative_Throws()
+        {
+            var e = new EconomyCalculator(0);
+            Assert.Throws<ArgumentOutOfRangeException>(() => e.AddPassiveIncome(-1));
+        }
+
+        [Test]
+        public void AddCashMultiplier_Negative_Throws()
+        {
+            var e = new EconomyCalculator(0);
+            Assert.Throws<ArgumentOutOfRangeException>(() => e.AddCashMultiplier(-0.1f));
+        }
     }
 }
