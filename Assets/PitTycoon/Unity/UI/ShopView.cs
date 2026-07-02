@@ -99,6 +99,30 @@ namespace PitTycoon.Unity.UI
             _selected = null; _selectedUpgrade = null; _selectedAbility = null; _selectedBuildId = null;
         }
 
+        // ---- TEMP M4c-T7 diagnostic: press F2 with the shop open to dump the panel's layout
+        // tree (heights/positions/active flags) to the Console. Remove once the layout bug is fixed.
+        private void Update()
+        {
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb != null && kb.f2Key.wasPressedThisFrame) DumpLayout();
+        }
+
+        private void DumpLayout()
+        {
+            var sb = new System.Text.StringBuilder("=== Shop layout dump ===\n");
+            Dump(transform as RectTransform, 0, sb);
+            Debug.Log(sb.ToString());
+        }
+
+        private static void Dump(RectTransform rt, int depth, System.Text.StringBuilder sb)
+        {
+            if (rt == null) return;
+            sb.Append(new string(' ', depth * 2)).Append(rt.name)
+              .Append($"  h={rt.rect.height:F1} posY={rt.anchoredPosition.y:F1} sdY={rt.sizeDelta.y:F1} active={rt.gameObject.activeSelf}\n");
+            foreach (Transform c in rt) Dump(c as RectTransform, depth + 1, sb);
+        }
+        // ---- end TEMP diagnostic ----
+
         private void Rebuild()
         {
             foreach (var r in _rows) if (r != null) Destroy(r.gameObject);
