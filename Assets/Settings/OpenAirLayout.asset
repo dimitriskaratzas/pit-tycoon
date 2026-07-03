@@ -23,6 +23,7 @@ MonoBehaviour:
     cost: 120
     effect: 0
     effectMagnitude: 3
+    targetAbilityId: 
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: camping
     label: Camping Field
@@ -34,6 +35,7 @@ MonoBehaviour:
     cost: 90
     effect: 1
     effectMagnitude: 40
+    targetAbilityId: 
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: gate
     label: Entrance Gate
@@ -45,4 +47,101 @@ MonoBehaviour:
     cost: 60
     effect: 0
     effectMagnitude: 1.5
+    targetAbilityId: 
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: grandstand
+    label: Grandstand
+    structurePrefab: {fileID: 1072899431684776828, guid: 218636cbf16417140a571f10493446c4, type: 3}
+    position: {x: -14, y: 0, z: -26}
+    euler: {x: 0, y: 20, z: 0}
+    cameraPosition: {x: -8, y: 7, z: -36}
+    cameraEuler: {x: 20, y: -30, z: 0}
+    cost: 150
+    effect: 1
+    effectMagnitude: 30
+    targetAbilityId: 
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: food_court
+    label: Food Court
+    structurePrefab: {fileID: 356912204089782379, guid: 9b17b2fd7c5578a4bb71b0d4e4b35894, type: 3}
+    position: {x: -26, y: 0, z: -16}
+    euler: {x: 0, y: 60, z: 0}
+    cameraPosition: {x: -18, y: 6, z: -24}
+    cameraEuler: {x: 18, y: -45, z: 0}
+    cost: 100
+    effect: 2
+    effectMagnitude: 25
+    targetAbilityId: 
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: bar
+    label: Bar
+    structurePrefab: {fileID: 5292374832188445658, guid: 710d90672e015324eabccf25f1970efb, type: 3}
+    position: {x: 14, y: 0, z: 14}
+    euler: {x: 0, y: -30, z: 0}
+    cameraPosition: {x: 8, y: 5, z: 6}
+    cameraEuler: {x: 14, y: 35, z: 0}
+    cost: 70
+    effect: 2
+    effectMagnitude: 15
+    targetAbilityId: 
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: vip_lounge
+    label: VIP Lounge
+    structurePrefab: {fileID: 5203305627131101633, guid: 49a482530e742164e9b6c2bd91222783, type: 3}
+    position: {x: -16, y: 0, z: 12}
+    euler: {x: 0, y: 40, z: 0}
+    cameraPosition: {x: -8, y: 6, z: 4}
+    cameraEuler: {x: 16, y: -45, z: 0}
+    cost: 200
+    effect: 3
+    effectMagnitude: 0.15
+    targetAbilityId: 
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: sponsor_banner
+    label: Sponsor Banner
+    structurePrefab: {fileID: 6948008799540863698, guid: b3e570a9b1dda2345ab02f7c919afcd7, type: 3}
+    position: {x: 0, y: 0, z: -32}
+    euler: {x: 0, y: 0, z: 0}
+    cameraPosition: {x: 0, y: 6, z: -22}
+    cameraEuler: {x: 14, y: 180, z: 0}
+    cost: 80
+    effect: 3
+    effectMagnitude: 0.1
+    targetAbilityId: 
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: amp_stack
+    label: Amp Stack
+    structurePrefab: {fileID: 5872692029051974925, guid: f5c325059f7da1844b71798ef6478ff2, type: 3}
+    position: {x: 10, y: 0, z: 5}
+    euler: {x: 0, y: -60, z: 0}
+    cameraPosition: {x: 5, y: 4, z: -2}
+    cameraEuler: {x: 14, y: 35, z: 0}
+    cost: 140
+    effect: 4
+    effectMagnitude: 0.5
+    targetAbilityId: woofer
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: strobe_rig
+    label: Strobe Rig
+    structurePrefab: {fileID: 1502067061738640188, guid: b116065324616564694e2788041ebf2d, type: 3}
+    position: {x: -10, y: 0, z: 5}
+    euler: {x: 0, y: 60, z: 0}
+    cameraPosition: {x: -5, y: 4, z: -2}
+    cameraEuler: {x: 14, y: -35, z: 0}
+    cost: 110
+    effect: 4
+    effectMagnitude: 0.5
+    targetAbilityId: lightburst
+    color: {r: 1, g: 1, b: 1, a: 1}
+  - id: speaker_wall
+    label: Speaker Wall
+    structurePrefab: {fileID: 6442916536123960462, guid: 0098f1cdfeabe614182618549eba2207, type: 3}
+    position: {x: 30, y: 0, z: 2}
+    euler: {x: 0, y: -90, z: 0}
+    cameraPosition: {x: 22, y: 5, z: -4}
+    cameraEuler: {x: 14, y: 53, z: 0}
+    cost: 160
+    effect: 4
+    effectMagnitude: 0.5
+    targetAbilityId: whirlpool
     color: {r: 1, g: 1, b: 1, a: 1}
