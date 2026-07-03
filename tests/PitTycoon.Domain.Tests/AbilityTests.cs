@@ -70,5 +70,44 @@ namespace PitTycoon.Domain.Tests
             var r = a.Fire(2.0, 2.0);
             Assert.That(r.Multiplier, Is.EqualTo(1f).Within(1e-4));
         }
+
+        // ---- M4c: structure spike bonus ----
+
+        [Test]
+        public void SpikeBonus_DefaultsToOne_FireUnchanged()
+        {
+            var a = Make();
+            Assert.That(a.SpikeBonus, Is.EqualTo(1f).Within(1e-4));
+            var r = a.Fire(2.0, 2.0);
+            Assert.That(r.HypeAdded, Is.EqualTo(24f).Within(1e-3)); // 4 * 6 * 1
+        }
+
+        [Test]
+        public void AddSpikeBonus_ScalesFireHype()
+        {
+            var a = Make();
+            a.AddSpikeBonus(0.5f);                        // +50%
+            var r = a.Fire(2.0, 2.0);
+            Assert.That(r.HypeAdded, Is.EqualTo(36f).Within(1e-3)); // 4 * 6 * 1.5
+        }
+
+        [Test]
+        public void AddSpikeBonus_AccumulatesAdditively()
+        {
+            var a = Make();
+            a.AddSpikeBonus(0.5f);
+            a.AddSpikeBonus(0.5f);
+            Assert.That(a.SpikeBonus, Is.EqualTo(2f).Within(1e-4));
+            var r = a.Fire(2.0, 2.0);
+            Assert.That(r.HypeAdded, Is.EqualTo(48f).Within(1e-3)); // 4 * 6 * 2
+        }
+
+        [Test]
+        public void AddSpikeBonus_Negative_Throws()
+        {
+            var a = Make();
+            Assert.That(() => a.AddSpikeBonus(-0.1f),
+                        Throws.TypeOf<System.ArgumentOutOfRangeException>());
+        }
     }
 }

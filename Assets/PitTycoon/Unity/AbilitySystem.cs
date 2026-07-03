@@ -147,5 +147,14 @@ namespace PitTycoon.Unity
             _bus?.Publish(new AbilityUnlocked(def.Id));
             return true;
         }
+
+        /// <summary>Structure effect (M4c): permanently boost one ability's hype spike by pct
+        /// (0.5 = +50%). Unknown ids warn and no-op (guards a typo'd VenueLayout).</summary>
+        public void AddSpikeBonus(string abilityId, float pct)
+        {
+            foreach (var a in _abilities)
+                if (a.Id == abilityId) { a.AddSpikeBonus(pct); return; }
+            Debug.LogWarning($"AbilitySystem: no ability with id '{abilityId}' for spike bonus.", this);
+        }
     }
 }
