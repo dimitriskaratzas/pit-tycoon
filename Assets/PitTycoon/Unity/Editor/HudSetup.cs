@@ -264,7 +264,7 @@ namespace PitTycoon.Unity.EditorTools
             scrollRect.content = contentRT;      // viewport falls back to the Scroll node itself
             scrollRect.horizontal = false; scrollRect.vertical = true;
             scrollRect.movementType = ScrollRect.MovementType.Clamped;
-            scrollRect.scrollSensitivity = 20f;
+            scrollRect.scrollSensitivity = 55f;   // px per wheel notch; higher = fewer notches to cross the list
             r.scroll = scrollRect;
 
             var upHead = NewUI("UpgradesLabel", content.transform);
