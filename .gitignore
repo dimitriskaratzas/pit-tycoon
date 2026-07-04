@@ -67,3 +67,4 @@ Thumbs.db
 !tests/**/*.csproj
 
 tmp_blender/
+*.blend1
