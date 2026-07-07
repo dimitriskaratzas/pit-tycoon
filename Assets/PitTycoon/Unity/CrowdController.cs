@@ -8,7 +8,9 @@ namespace PitTycoon.Unity
     /// stage outward) as the CrowdFill's Active count rises with hype. Owns one CrowdFill;
     /// the persistent Following ratchets up across sets (banked at set end). Reacts only
     /// through IAudioAnalyzer (never touches AudioSource) and reads hype via IHypeMeter.
-    /// Exposes FillFraction (ICrowdMeter) so HypeSystem can scale its rate by how full it is.
+    /// Members are animated by a hype-blended Animator (Energy = analyzer intensity) with
+    /// beat pops on the transform. Exposes FillFraction (ICrowdMeter) so HypeSystem can scale
+    /// its rate by how full it is.
     /// </summary>
     public sealed class CrowdController : MonoBehaviour, ICrowdMeter
     {
@@ -16,14 +18,23 @@ namespace PitTycoon.Unity
         [SerializeField] private int startingCapacity = 84;
         [SerializeField] private int startingFollowing = 24;
         [SerializeField] private float spacing = 1.2f;
-        [SerializeField] private float bounceHeight = 0.6f;
         [SerializeField] private float beatPop = 0.7f;
         [SerializeField] private float popDecayPerSecond = 2.5f;
-        [SerializeField] private float bobSpeed = 7f;
         [Tooltip("How fast a member pops in/out as the pit fills (scale units/sec).")]
         [SerializeField] private float scaleInPerSecond = 3f;
         [SerializeField] private Material memberMaterial;
-        [SerializeField] private GameObject memberPrefab;
+        [Tooltip("Rigged body-variant prefabs (M5a). Each member picks one at random. Empty = capsule fallback.")]
+        [SerializeField] private GameObject[] memberPrefabs;
+        [Tooltip("Outfit tints assigned per member at random (MaterialPropertyBlock on _BaseColor).")]
+        [SerializeField] private Color[] outfitPalette =
+        {
+            new Color(0.86f, 0.32f, 0.25f),   // red jacket
+            new Color(0.20f, 0.45f, 0.70f),   // blue denim
+            new Color(0.95f, 0.75f, 0.20f),   // yellow hoodie
+            new Color(0.35f, 0.65f, 0.35f),   // green tee
+            new Color(0.55f, 0.35f, 0.60f),   // purple flannel
+            new Color(0.16f, 0.13f, 0.18f),   // black metal shirt
+        };
         [SerializeField] private float rotationJitter = 18f;
         [SerializeField] private float scaleJitter = 0.12f;
         [Tooltip("Translucent material for ghost-preview members (wired by Build Upgrade Preview).")]
@@ -41,6 +52,10 @@ namespace PitTycoon.Unity
         private bool _live;
         private readonly System.Collections.Generic.List<GameObject> _ghosts =
             new System.Collections.Generic.List<GameObject>();
+
+        private Animator[] _animators;    // per-member; null where the prefab has no Animator
+        private static readonly int EnergyParam = Animator.StringToHash("Energy");
+        private static readonly int BaseColorProp = Shader.PropertyToID("_BaseColor");
 
         /// <summary>ICrowdMeter: how full the pit is, 0..1.</summary>
         public float FillFraction => _fill?.FillFraction ?? 0f;
@@ -117,6 +132,7 @@ namespace PitTycoon.Unity
             _members = new Transform[n];
             _fullScale = new float[n];
             _curScale = new float[n];
+            _animators = new Animator[n];
 
             int startRows = Mathf.CeilToInt((float)startingCapacity / columns);
             float frontZ = (startRows - 1) * spacing * 0.5f;   // front row fixed near the stage
@@ -127,20 +143,8 @@ namespace PitTycoon.Unity
                 int row = i / columns;                          // row 0 = front (near stage)
                 int col = i % columns;
 
-                GameObject go;
-                if (memberPrefab != null)
-                {
-                    go = Instantiate(memberPrefab);
-                }
-                else
-                {
-                    go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                    if (memberMaterial != null)
-                    {
-                        var rend = go.GetComponent<Renderer>();
-                        if (rend != null) rend.sharedMaterial = memberMaterial;
-                    }
-                }
+                GameObject go = SpawnMember();
+                _animators[i] = StyleMember(go);
 
                 go.name = $"Crowd_{row}_{col}";
                 go.transform.SetParent(transform, false);
@@ -177,9 +181,9 @@ namespace PitTycoon.Unity
                 int row = i / columns;
                 int col = i % columns;
 
-                GameObject go = memberPrefab != null
-                    ? Instantiate(memberPrefab)
-                    : GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                GameObject go = SpawnMember();
+                var ghostAnim = go.GetComponentInChildren<Animator>();
+                if (ghostAnim != null) Destroy(ghostAnim);
                 go.name = $"GhostCrowd_{row}_{col}";
                 foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
                 if (ghostMaterial != null)
@@ -200,6 +204,42 @@ namespace PitTycoon.Unity
             _ghosts.Clear();
         }
 
+        /// <summary>Instantiate a random body variant, or the capsule fallback when none are wired.</summary>
+        private GameObject SpawnMember()
+        {
+            if (memberPrefabs != null && memberPrefabs.Length > 0)
+            {
+                var prefab = memberPrefabs[Random.Range(0, memberPrefabs.Length)];
+                if (prefab != null) return Instantiate(prefab);
+            }
+            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            if (memberMaterial != null)
+            {
+                var rend = go.GetComponent<Renderer>();
+                if (rend != null) rend.sharedMaterial = memberMaterial;
+            }
+            return go;
+        }
+
+        /// <summary>Random outfit tint + desynced animator start (offset + speed jitter).</summary>
+        private Animator StyleMember(GameObject go)
+        {
+            if (outfitPalette != null && outfitPalette.Length > 0)
+            {
+                var mpb = new MaterialPropertyBlock();
+                mpb.SetColor(BaseColorProp, outfitPalette[Random.Range(0, outfitPalette.Length)]);
+                foreach (var r in go.GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(mpb);
+            }
+            var anim = go.GetComponentInChildren<Animator>();
+            if (anim != null)
+            {
+                anim.cullingMode = AnimatorCullingMode.CullCompletely;
+                anim.speed = Random.Range(0.9f, 1.1f);
+                anim.Play(0, 0, Random.value);   // random normalized start time: no lockstep
+            }
+            return anim;
+        }
+
         private void Update()
         {
             if (_analyzer == null || _members == null || _fill == null) return;
@@ -211,7 +251,6 @@ namespace PitTycoon.Unity
 
             int active = _fill.ActiveCount;
             float intensity = _analyzer.Intensity01;
-            float t = Time.time;
 
             for (int i = 0; i < _members.Length; i++)
             {
@@ -224,10 +263,12 @@ namespace PitTycoon.Unity
                 tr.localScale = Vector3.one * s;
 
                 bool visible = _curScale[i] > 0.05f;
-                float bob = visible ? Mathf.Abs(Mathf.Sin(t * bobSpeed + i * 0.6f)) * bounceHeight * intensity : 0f;
                 Vector3 p = tr.localPosition;
-                p.y = bob + (visible ? _pop : 0f);
+                p.y = visible ? _pop : 0f;              // clips own body motion now; only beat pops lift the root
                 tr.localPosition = p;
+
+                var anim = _animators != null && i < _animators.Length ? _animators[i] : null;
+                if (anim != null && visible) anim.SetFloat(EnergyParam, intensity);
             }
         }
     }
