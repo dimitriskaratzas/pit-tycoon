@@ -15,7 +15,7 @@ MonoBehaviour:
   spots:
   - id: second_stage
     label: Second Stage
-    structurePrefab: {fileID: 4082466458571323899, guid: 8c7e2a639a9e65c4ea43076d11fbe34a, type: 3}
+    structurePrefab: {fileID: 6584657371909362626, guid: c953c395608826d4f8beaa18d7e6c1fe, type: 3}
     position: {x: -22, y: 0, z: 0}
     euler: {x: 0, y: 35, z: 0}
     cameraPosition: {x: -14, y: 6, z: -8}
@@ -27,7 +27,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: camping
     label: Camping Field
-    structurePrefab: {fileID: 6450924917593622013, guid: 79013cbf8053110499f7b8355a5b0817, type: 3}
+    structurePrefab: {fileID: 5027374764503994409, guid: c725b84bc73687841ab0b152f4afb162, type: 3}
     position: {x: 16, y: 0, z: -22}
     euler: {x: 0, y: -20, z: 0}
     cameraPosition: {x: 10, y: 7, z: -34}
@@ -39,7 +39,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: gate
     label: Entrance Gate
-    structurePrefab: {fileID: 8840353635867738460, guid: bea568e95e8943a4099d2cf1a855ee1e, type: 3}
+    structurePrefab: {fileID: 4928094824413233607, guid: fa1e5af49b23b83499e546490db02073, type: 3}
     position: {x: 24, y: 0, z: -10}
     euler: {x: 0, y: -50, z: 0}
     cameraPosition: {x: 16, y: 5, z: -18}
@@ -51,7 +51,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: grandstand
     label: Grandstand
-    structurePrefab: {fileID: 1072899431684776828, guid: 218636cbf16417140a571f10493446c4, type: 3}
+    structurePrefab: {fileID: 4070854527393364476, guid: 8ce040d7e62e608499b02a09e97b97d7, type: 3}
     position: {x: -14, y: 0, z: -26}
     euler: {x: 0, y: 20, z: 0}
     cameraPosition: {x: -8, y: 7, z: -36}
@@ -63,7 +63,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: food_court
     label: Food Court
-    structurePrefab: {fileID: 356912204089782379, guid: 9b17b2fd7c5578a4bb71b0d4e4b35894, type: 3}
+    structurePrefab: {fileID: 181463089628528752, guid: cc66a646f7e3ef940aeb03660da849f3, type: 3}
     position: {x: -26, y: 0, z: -16}
     euler: {x: 0, y: 60, z: 0}
     cameraPosition: {x: -18, y: 6, z: -24}
@@ -75,7 +75,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: bar
     label: Bar
-    structurePrefab: {fileID: 5292374832188445658, guid: 710d90672e015324eabccf25f1970efb, type: 3}
+    structurePrefab: {fileID: 1395706668665148643, guid: 7e5772e4405c0da4e927dc7c72b4f305, type: 3}
     position: {x: 14, y: 0, z: 14}
     euler: {x: 0, y: -30, z: 0}
     cameraPosition: {x: 8, y: 5, z: 6}
@@ -87,7 +87,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: vip_lounge
     label: VIP Lounge
-    structurePrefab: {fileID: 5203305627131101633, guid: 49a482530e742164e9b6c2bd91222783, type: 3}
+    structurePrefab: {fileID: 5632346481352212477, guid: afc1a48c6cc5cf847a116f9771e77f0a, type: 3}
     position: {x: -16, y: 0, z: 12}
     euler: {x: 0, y: 40, z: 0}
     cameraPosition: {x: -8, y: 6, z: 4}
@@ -99,7 +99,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: sponsor_banner
     label: Sponsor Banner
-    structurePrefab: {fileID: 6948008799540863698, guid: b3e570a9b1dda2345ab02f7c919afcd7, type: 3}
+    structurePrefab: {fileID: 446718034956296244, guid: f8872609d79f57d49bc885faa74aa8f0, type: 3}
     position: {x: 0, y: 0, z: -32}
     euler: {x: 0, y: 0, z: 0}
     cameraPosition: {x: 0, y: 6, z: -22}
@@ -111,7 +111,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: amp_stack
     label: Amp Stack
-    structurePrefab: {fileID: 5872692029051974925, guid: f5c325059f7da1844b71798ef6478ff2, type: 3}
+    structurePrefab: {fileID: 8148796855207809485, guid: 928d46096be6f5e47ac3c7a066c39ede, type: 3}
     position: {x: 10, y: 0, z: 5}
     euler: {x: 0, y: -60, z: 0}
     cameraPosition: {x: 5, y: 4, z: -2}
@@ -123,7 +123,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: strobe_rig
     label: Strobe Rig
-    structurePrefab: {fileID: 1502067061738640188, guid: b116065324616564694e2788041ebf2d, type: 3}
+    structurePrefab: {fileID: 4606220959048123800, guid: a40f588106c8d6c4f8a6e0f3032b0a7e, type: 3}
     position: {x: -10, y: 0, z: 5}
     euler: {x: 0, y: 60, z: 0}
     cameraPosition: {x: -5, y: 4, z: -2}
@@ -135,7 +135,7 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 1}
   - id: speaker_wall
     label: Speaker Wall
-    structurePrefab: {fileID: 6442916536123960462, guid: 0098f1cdfeabe614182618549eba2207, type: 3}
+    structurePrefab: {fileID: 1509185940831708839, guid: 4cdf54ac42a9a9a44983f7dd617fab03, type: 3}
     position: {x: 30, y: 0, z: 2}
     euler: {x: 0, y: -90, z: 0}
     cameraPosition: {x: 22, y: 5, z: -4}
