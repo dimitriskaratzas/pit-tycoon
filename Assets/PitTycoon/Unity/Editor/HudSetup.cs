@@ -259,13 +259,33 @@ namespace PitTycoon.Unity.EditorTools
             var cl = content.AddComponent<VerticalLayoutGroup>();
             cl.spacing = 8f; cl.childControlWidth = true; cl.childControlHeight = false;
             cl.childForceExpandWidth = true; cl.childForceExpandHeight = false;
+            cl.padding = new RectOffset(0, 10, 0, 0);   // keep rows clear of the scrollbar
             content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
             scrollRect.content = contentRT;      // viewport falls back to the Scroll node itself
             scrollRect.horizontal = false; scrollRect.vertical = true;
             scrollRect.movementType = ScrollRect.MovementType.Clamped;
-            scrollRect.scrollSensitivity = 55f;   // px per wheel notch; higher = fewer notches to cross the list
+            scrollRect.scrollSensitivity = 90f;   // px per wheel notch; higher = fewer notches to cross the list
             r.scroll = scrollRect;
+
+            // Slim always-visible scrollbar: the rows are Buttons (they capture drags), so the
+            // wheel was the only scroll input — the thumb gives a draggable, visible affordance.
+            var sb = NewUI("VScrollbar", scroll.transform);
+            var sbRT = sb.GetComponent<RectTransform>();
+            sbRT.anchorMin = new Vector2(1f, 0f); sbRT.anchorMax = Vector2.one;
+            sbRT.pivot = new Vector2(1f, 0.5f);
+            sbRT.sizeDelta = new Vector2(6f, 0f); sbRT.anchoredPosition = Vector2.zero;
+            AddImage(sb, new Color(1f, 1f, 1f, 0.06f));
+            var scrollbar = sb.AddComponent<Scrollbar>();
+            scrollbar.direction = Scrollbar.Direction.BottomToTop;
+            var sliding = NewUI("SlidingArea", sb.transform);
+            Stretch(sliding.GetComponent<RectTransform>());
+            var handle = NewUI("Handle", sliding.transform);
+            var handleRT = handle.GetComponent<RectTransform>();
+            Stretch(handleRT);
+            var handleImg = AddImage(handle, new Color(1f, 1f, 1f, 0.28f));
+            scrollbar.handleRect = handleRT; scrollbar.targetGraphic = handleImg;
+            scrollRect.verticalScrollbar = scrollbar;
 
             var upHead = NewUI("UpgradesLabel", content.transform);
             upHead.GetComponent<RectTransform>().sizeDelta = new Vector2(0f, 18f);
