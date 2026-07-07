@@ -5,9 +5,10 @@ using PitTycoon.Unity;
 namespace PitTycoon.Unity.EditorTools
 {
     /// <summary>
-    /// Builds + wires the festival ground (M4a+M4c): enlarges the ground plane, creates/loads the
-    /// open-air VenueLayout with the full 11-spot greybox build-spot roster (M4a originals plus the
-    /// M4c grandstand/food court/bar/VIP lounge/sponsor banner/amp stack/strobe rig/speaker wall),
+    /// Builds + wires the festival ground (M4a+M4c+M4d): enlarges the ground plane, creates/loads the
+    /// open-air VenueLayout with the full 11-spot build-spot roster (M4a originals plus the
+    /// M4c grandstand/food court/bar/VIP lounge/sponsor banner/amp stack/strobe rig/speaker wall), loads
+    /// structure prefabs from StructurePrefabs (real models with greybox fallback, M4d),
     /// adds BuildSpotController + BuildSystem on the Systems object, seeds survey/live camera poses +
     /// the buildSpots ref on UpgradePreviewController, and wires GameBootstrap. Run AFTER Build HUD +
     /// Build Upgrade Preview. Idempotent.
@@ -42,18 +43,18 @@ namespace PitTycoon.Unity.EditorTools
             if (ground != null) ground.transform.localScale = new Vector3(12f, 1f, 12f);
             else Debug.LogWarning("FestivalGroundSetup: no 'Ground' object found to enlarge.");
 
-            // 2. Greybox structure prefabs.
-            var secondStage = StructureGreyboxPrefabs.EnsureSecondStage();
-            var camping = StructureGreyboxPrefabs.EnsureCampingField();
-            var gate = StructureGreyboxPrefabs.EnsureEntranceGate();
-            var grandstand = StructureGreyboxPrefabs.EnsureGrandstand();
-            var foodCourt = StructureGreyboxPrefabs.EnsureFoodCourt();
-            var bar = StructureGreyboxPrefabs.EnsureBar();
-            var vipLounge = StructureGreyboxPrefabs.EnsureVipLounge();
-            var sponsorBanner = StructureGreyboxPrefabs.EnsureSponsorBanner();
-            var ampStack = StructureGreyboxPrefabs.EnsureAmpStack();
-            var strobeRig = StructureGreyboxPrefabs.EnsureStrobeRig();
-            var speakerWall = StructureGreyboxPrefabs.EnsureSpeakerWall();
+            // 2. Structure prefabs: real models where an FBX exists (M4d), greybox fallback otherwise.
+            var secondStage = StructurePrefabs.EnsureSecondStage();
+            var camping = StructurePrefabs.EnsureCampingField();
+            var gate = StructurePrefabs.EnsureEntranceGate();
+            var grandstand = StructurePrefabs.EnsureGrandstand();
+            var foodCourt = StructurePrefabs.EnsureFoodCourt();
+            var bar = StructurePrefabs.EnsureBar();
+            var vipLounge = StructurePrefabs.EnsureVipLounge();
+            var sponsorBanner = StructurePrefabs.EnsureSponsorBanner();
+            var ampStack = StructurePrefabs.EnsureAmpStack();
+            var strobeRig = StructurePrefabs.EnsureStrobeRig();
+            var speakerWall = StructurePrefabs.EnsureSpeakerWall();
 
             // 3. VenueLayout asset (open-air theme). Positions/costs/effects are tuned in play.
             var layout = LoadOrCreateLayout();

@@ -48,6 +48,14 @@ namespace PitTycoon.Domain
             CashMultiplier += pct;
         }
 
+        /// <summary>Overwrites the balance outright. For debug/testing tools (skip-to-shop grant);
+        /// not part of the normal earn loop.</summary>
+        public void SetCash(int amount)
+        {
+            if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
+            Cash = amount;
+        }
+
         public bool CanAfford(int cost) => cost >= 0 && Cash >= cost;
 
         public bool TrySpend(int cost)

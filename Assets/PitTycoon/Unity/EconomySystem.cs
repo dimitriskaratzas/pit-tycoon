@@ -35,5 +35,8 @@ namespace PitTycoon.Unity
 
         /// <summary>Structure effect (M4c): additively raise the hype->cash multiplier.</summary>
         public void AddCashMultiplier(float pct) => _calc.AddCashMultiplier(pct);
+
+        /// <summary>Debug tool: overwrite the balance (skip-to-shop grant). Not the normal earn loop.</summary>
+        public void SetCash(int amount) => _calc?.SetCash(amount);
     }
 }

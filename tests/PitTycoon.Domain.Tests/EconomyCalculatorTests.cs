@@ -139,5 +139,22 @@ namespace PitTycoon.Domain.Tests
             var e = new EconomyCalculator(0);
             Assert.Throws<ArgumentOutOfRangeException>(() => e.AddCashMultiplier(-0.1f));
         }
+
+        // ---- debug: set cash directly ----
+
+        [Test]
+        public void SetCash_OverwritesBalance()
+        {
+            var e = new EconomyCalculator(100);
+            e.SetCash(99999);
+            Assert.That(e.Cash, Is.EqualTo(99999));
+        }
+
+        [Test]
+        public void SetCash_Negative_Throws()
+        {
+            var e = new EconomyCalculator(0);
+            Assert.Throws<ArgumentOutOfRangeException>(() => e.SetCash(-1));
+        }
     }
 }

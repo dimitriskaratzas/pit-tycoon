@@ -304,3 +304,30 @@ ability spike (+pct on one ability's hype). All numeric logic is in Domain behin
 **Tuning** (OpenAirLayout asset, live in the Inspector): per-spot cost, effectMagnitude,
 targetAbilityId, world pose, camera pose. Passive/multiplier magnitudes are deliberately
 raw starting values — the tycoon curve rework is a later milestone.
+
+## M4d — Real structure models
+
+The 11 build-spot structures are real Blender models (source:
+`ArtSource/festival-structures.blend`), exported per-structure to
+`Assets/PitTycoon/Art/Models/Structures/<Name>.fbx`.
+
+**Build steps**
+1. Pull; let Unity import the FBXs and compile.
+2. Run `Pit Tycoon → Build Festival Ground`. This now routes structure prefabs through
+   `StructurePrefabs`: any structure with an FBX gets a real-model prefab at
+   `Assets/PitTycoon/Art/Prefabs/Structures/`, with the shared cel palette
+   (`Assets/PitTycoon/Art/Materials/Palette/`) assigned by material-slot name; structures
+   without an FBX fall back to the greybox prefab automatically.
+
+**Verification**
+- Enter Play → intermission → buy any structure: the real model rises at the spot with
+  palette colors (no flat gray cubes).
+- Sponsor Banner's cloth sways gently; Strobe Rig's heads pan slowly (IdleMotion).
+- Preview fly-to close-ups hold up at mid detail; outline/halftone post reads cleanly.
+
+**Tuning**
+- Recolor the whole festival: edit the 7 materials in `Art/Materials/Palette/` (live).
+- Idle motion amplitude/speed: `IdleMotion` component on the SponsorBanner / StrobeRig
+  prefabs.
+- Model edits: change the .blend, re-export the structure's FBX, re-run
+  `Pit Tycoon → Build Festival Ground`.
