@@ -35,6 +35,13 @@ namespace PitTycoon.Unity
             if (Current == Phase.Intermission) StartSet();
         }
 
+        /// <summary>Debug tool: end the current live set immediately (banks whatever hype was earned
+        /// and fires SetEnded, so the HUD swaps to the shop through the normal path). No-op if not live.</summary>
+        public void DebugSkipSet()
+        {
+            if (Current == Phase.Live && _started) EndSet();
+        }
+
         private void StartSet()
         {
             if (source == null || source.clip == null)
