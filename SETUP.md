@@ -331,3 +331,28 @@ The 11 build-spot structures are real Blender models (source:
   prefabs.
 - Model edits: change the .blend, re-export the structure's FBX, re-run
   `Pit Tycoon → Build Festival Ground`.
+
+## M5a — Rigged crowd figures
+
+The pit is now 4 rigged body variants (base/chunky/lanky/short) skinned to one armature,
+dancing a 3-clip blend (Sway → Groove → HypeJump) driven by the set's hype meter (raw FFT
+intensity has too little dynamic range to sweep the blend; beat pops keep the direct music
+reactivity), with random outfit tints per member. Source: `ArtSource/crowd-figures.blend`.
+
+**Build steps (after pulling FBXs):**
+1. Let Unity import `Assets/PitTycoon/Art/Models/Crowd/` (4 FBXs).
+2. Run `Pit Tycoon → Build Festival Scene` — this now also builds
+   `Assets/Settings/CrowdAnimator.controller`, the 4 prefabs under
+   `Assets/PitTycoon/Art/Prefabs/Crowd/`, and fills CrowdController's *Member Prefabs*.
+3. Press Play.
+
+**Verify:**
+- Low hype: crowd sways in place. Mid: grooves. High: jumps with arms up.
+- No two neighbours move in lockstep (random clip offset/speed).
+- Outfit colors vary; beat pops still lift the crowd on kicks.
+- Capacity upgrades still add rows; ghost previews are static (no dancing ghosts).
+
+**Tuning knobs:**
+- Outfit palette: CrowdController *Outfit Palette* (Inspector, live).
+- Blend feel: `Assets/Settings/CrowdAnimator.controller` blend tree thresholds/clip speeds.
+- Desync: `StyleMember`'s speed jitter range in `CrowdController.cs`.
