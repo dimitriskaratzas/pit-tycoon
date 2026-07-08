@@ -335,8 +335,9 @@ The 11 build-spot structures are real Blender models (source:
 ## M5a — Rigged crowd figures
 
 The pit is now 4 rigged body variants (base/chunky/lanky/short) skinned to one armature,
-dancing a 3-clip blend (Sway → Groove → HypeJump) driven by music intensity, with random
-outfit tints per member. Source: `ArtSource/crowd-figures.blend`.
+dancing a 3-clip blend (Sway → Groove → HypeJump) driven by the set's hype meter (raw FFT
+intensity has too little dynamic range to sweep the blend; beat pops keep the direct music
+reactivity), with random outfit tints per member. Source: `ArtSource/crowd-figures.blend`.
 
 **Build steps (after pulling FBXs):**
 1. Let Unity import `Assets/PitTycoon/Art/Models/Crowd/` (4 FBXs).

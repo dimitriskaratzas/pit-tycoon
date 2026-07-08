@@ -55,7 +55,9 @@ namespace PitTycoon.Unity
 
         private Animator[] _animators;    // per-member; null where the prefab has no Animator
         private static readonly int EnergyParam = Animator.StringToHash("Energy");
+        private static readonly int DanceState = Animator.StringToHash("Dance");
         private static readonly int BaseColorProp = Shader.PropertyToID("_BaseColor");
+        private float[] _popJitter;  // per-member beat-pop height factor, so hops aren't a unison wave
 
         /// <summary>ICrowdMeter: how full the pit is, 0..1.</summary>
         public float FillFraction => _fill?.FillFraction ?? 0f;
@@ -133,6 +135,7 @@ namespace PitTycoon.Unity
             _fullScale = new float[n];
             _curScale = new float[n];
             _animators = new Animator[n];
+            _popJitter = new float[n];
 
             int startRows = Mathf.CeilToInt((float)startingCapacity / columns);
             float frontZ = (startRows - 1) * spacing * 0.5f;   // front row fixed near the stage
@@ -153,6 +156,7 @@ namespace PitTycoon.Unity
                 go.transform.localRotation = Quaternion.Euler(
                     0f, Random.Range(-rotationJitter, rotationJitter), 0f);
 
+                _popJitter[i] = Random.Range(0.55f, 1.2f);
                 float full = 1f + Random.Range(-scaleJitter, scaleJitter);
                 float cur = (i < active) ? 1f : 0f;             // active members appear immediately
                 _fullScale[i] = full;
@@ -234,8 +238,10 @@ namespace PitTycoon.Unity
             if (anim != null)
             {
                 anim.cullingMode = AnimatorCullingMode.CullCompletely;
-                anim.speed = Random.Range(0.9f, 1.1f);
-                anim.Play(0, 0, Random.value);   // random normalized start time: no lockstep
+                anim.speed = Random.Range(0.85f, 1.15f);
+                // Target the state BY NAME: hash 0 ("current state") is a no-op before the
+                // Animator's first frame, which left every member at frame 0 = lockstep.
+                anim.Play(DanceState, 0, Random.value);
             }
             return anim;
         }
@@ -250,7 +256,11 @@ namespace PitTycoon.Unity
                 _fill.Tick(_hype.HypeFraction);
 
             int active = _fill.ActiveCount;
-            float intensity = _analyzer.Intensity01;
+            // Dance energy tracks HYPE, not raw FFT intensity: the spectrum's energy sum has too
+            // little dynamic range to sweep 0..1 (measured ~0.7 floor), while hype builds 0 -> 1
+            // across a set — sway to groove to jumping as the set takes off. Beat pops keep the
+            // direct music reactivity.
+            float energy = _hype != null ? _hype.HypeFraction : _analyzer.Intensity01;
 
             for (int i = 0; i < _members.Length; i++)
             {
@@ -264,11 +274,12 @@ namespace PitTycoon.Unity
 
                 bool visible = _curScale[i] > 0.05f;
                 Vector3 p = tr.localPosition;
-                p.y = visible ? _pop : 0f;              // clips own body motion now; only beat pops lift the root
+                float jitter = _popJitter != null && i < _popJitter.Length ? _popJitter[i] : 1f;
+                p.y = visible ? _pop * jitter : 0f;     // clips own body motion; beat pops lift the root
                 tr.localPosition = p;
 
                 var anim = _animators != null && i < _animators.Length ? _animators[i] : null;
-                if (anim != null && visible) anim.SetFloat(EnergyParam, intensity);
+                if (anim != null && visible) anim.SetFloat(EnergyParam, energy);
             }
         }
     }
