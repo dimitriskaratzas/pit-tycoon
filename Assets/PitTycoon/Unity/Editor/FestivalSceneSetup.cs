@@ -37,14 +37,27 @@ namespace PitTycoon.Unity.EditorTools
             var structureMat = LoadOrCreateMat($"{MatDir}/StructureMat.mat", lit, Structure);
             var crowdMat = LoadOrCreateMat($"{MatDir}/CrowdMat.mat", lit, Crowd);
 
-            // Crowd-figure prefab (figure mesh + CrowdMat), wired into CrowdController.
+            // Crowd members (M5a): rigged variant prefabs when the Crowd FBXs exist, else the
+            // static M2b figure as a one-element array. CrowdController falls back to capsules
+            // only when the array ends up empty.
             var figurePrefab = BuildFigurePrefab(crowdMat);
+            var variants = CrowdPrefabs.EnsureCrowdVariants();
+            if (variants.Length == 0 && figurePrefab != null) variants = new[] { figurePrefab };
+
             var crowd = Object.FindAnyObjectByType<CrowdController>();
-            if (crowd != null && figurePrefab != null)
+            if (crowd != null && variants.Length > 0)
             {
                 var so = new SerializedObject(crowd);
-                var prop = so.FindProperty("memberPrefab");
-                if (prop != null) { prop.objectReferenceValue = figurePrefab; so.ApplyModifiedPropertiesWithoutUndo(); EditorUtility.SetDirty(crowd); }
+                var prop = so.FindProperty("memberPrefabs");
+                if (prop != null)
+                {
+                    prop.arraySize = variants.Length;
+                    for (int i = 0; i < variants.Length; i++)
+                        prop.GetArrayElementAtIndex(i).objectReferenceValue = variants[i];
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(crowd);
+                }
+                else Debug.LogWarning("FestivalSceneSetup: 'memberPrefabs' not found on CrowdController.");
             }
 
             // Structure placement (behind the default 12x7 crowd, which spans z in [-3.6, 3.6]).

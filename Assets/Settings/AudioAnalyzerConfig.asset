@@ -15,7 +15,7 @@ MonoBehaviour:
   FftSize: 1024
   FftWindow: 5
   NumBands: 8
-  IntensityGain: 40
+  IntensityGain: 8
   IntensitySmoothing: 8
   HistorySize: 43
   ThresholdMultiplier: 1.5
