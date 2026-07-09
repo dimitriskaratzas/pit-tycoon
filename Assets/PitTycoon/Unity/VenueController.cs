@@ -122,6 +122,8 @@ namespace PitTycoon.Unity
             ghost.transform.localRotation = src.localRotation;
             ghost.transform.localScale = targetScale;
             foreach (var c in ghost.GetComponentsInChildren<Collider>()) Destroy(c);
+            foreach (var l in ghost.GetComponentsInChildren<Light>()) Destroy(l);
+            foreach (var im in ghost.GetComponentsInChildren<IdleMotion>()) Destroy(im);
             if (ghostMaterial != null)
                 foreach (var r in ghost.GetComponentsInChildren<Renderer>()) r.sharedMaterial = ghostMaterial;
             return ghost;

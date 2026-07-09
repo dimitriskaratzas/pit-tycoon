@@ -61,18 +61,49 @@ namespace PitTycoon.Unity.EditorTools
             }
 
             // Structure placement (behind the default 12x7 crowd, which spans z in [-3.6, 3.6]).
-            var stage = PlaceModel("Stage.fbx", "Stage", new Vector3(0f, 0f, 9f), structureMat);
-            var truss = PlaceModel("Truss.fbx", "Truss", new Vector3(0f, 0f, 9f), structureMat);
-            PlaceModel("Banner.fbx", "Banner", new Vector3(0f, 1.2f, 10f), structureMat);
-            var paLeft = PlaceModel("PASpeaker.fbx", "PA Left", new Vector3(-6f, 0f, 9f), structureMat);
-            var paRight = PlaceModel("PASpeaker.fbx", "PA Right", new Vector3(6f, 0f, 9f), structureMat);
-
-            // Reparent the M2a accent lights onto the truss beam.
-            if (truss != null)
+            // M5b: one full stage rig replaces the M2b Stage/Truss/Banner/PA set. While
+            // MainStage.fbx is not yet exported, the legacy five-object placement still runs.
+            GameObject stage, lightMount, paLeft, paRight;
+            var stagePrefab = StructurePrefabs.EnsureMainStage();
+            if (stagePrefab != null)
             {
-                ReparentLight("Accent Amber", truss.transform, new Vector3(-2.5f, 4f, 9f));
-                ReparentLight("Accent Magenta", truss.transform, new Vector3(2.5f, 4f, 9f));
-                ReparentLight("Accent Cyan", truss.transform, new Vector3(0f, 4f, 9f));
+                foreach (var legacy in new[] { "Stage", "Truss", "Banner", "PA Left", "PA Right" })
+                {
+                    var old = GameObject.Find(legacy);
+                    if (old != null) Object.DestroyImmediate(old);
+                }
+                var existing = GameObject.Find("MainStage");
+                if (existing != null) Object.DestroyImmediate(existing);
+
+                var rig = (GameObject)PrefabUtility.InstantiatePrefab(stagePrefab);
+                rig.name = "MainStage";
+                rig.transform.position = new Vector3(0f, 0f, 9f);
+
+                Transform Find(string n) { var t = FindDeep(rig.transform, n); return t; }
+                stage = rig;
+                lightMount = Find("RoofTruss") != null ? Find("RoofTruss").gameObject : rig;
+                paLeft = Find("PAWingL") != null ? Find("PAWingL").gameObject : null;
+                paRight = Find("PAWingR") != null ? Find("PAWingR").gameObject : null;
+                if (paLeft == null || paRight == null)
+                    Debug.LogWarning("FestivalSceneSetup: PAWingL/PAWingR not found on MainStage — " +
+                                     "PA upgrade scaling has no target until the rig exports these children.");
+            }
+            else
+            {
+                stage = PlaceModel("Stage.fbx", "Stage", new Vector3(0f, 0f, 9f), structureMat);
+                var truss = PlaceModel("Truss.fbx", "Truss", new Vector3(0f, 0f, 9f), structureMat);
+                PlaceModel("Banner.fbx", "Banner", new Vector3(0f, 1.2f, 10f), structureMat);
+                paLeft = PlaceModel("PASpeaker.fbx", "PA Left", new Vector3(-6f, 0f, 9f), structureMat);
+                paRight = PlaceModel("PASpeaker.fbx", "PA Right", new Vector3(6f, 0f, 9f), structureMat);
+                lightMount = truss != null ? truss : stage;
+            }
+
+            // Reparent the M2a accent lights onto the stage's light mount (roof truss).
+            if (lightMount != null)
+            {
+                ReparentLight("Accent Amber", lightMount.transform, new Vector3(-2.5f, 4f, 9f));
+                ReparentLight("Accent Magenta", lightMount.transform, new Vector3(2.5f, 4f, 9f));
+                ReparentLight("Accent Cyan", lightMount.transform, new Vector3(0f, 4f, 9f));
             }
 
             WireBeatVfx(lit, stage);
@@ -207,6 +238,17 @@ namespace PitTycoon.Unity.EditorTools
             string leaf = System.IO.Path.GetFileName(path);
             if (!AssetDatabase.IsValidFolder(parent)) EnsureFolder(parent);
             AssetDatabase.CreateFolder(parent, leaf);
+        }
+
+        private static Transform FindDeep(Transform t, string name)
+        {
+            if (t.name == name) return t;
+            foreach (Transform c in t)
+            {
+                var hit = FindDeep(c, name);
+                if (hit != null) return hit;
+            }
+            return null;
         }
     }
 }

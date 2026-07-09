@@ -45,6 +45,42 @@ namespace PitTycoon.Unity.EditorTools
         public static GameObject EnsureStrobeRig()     => Ensure("StrobeRig",     StructureGreyboxPrefabs.EnsureStrobeRig);
         public static GameObject EnsureSpeakerWall()   => Ensure("SpeakerWall",   StructureGreyboxPrefabs.EnsureSpeakerWall);
 
+        /// <summary>M5b main stage. No greybox fallback: returns null while the FBX is not
+        /// yet exported, and FestivalSceneSetup keeps the legacy M2b placement.</summary>
+        public static GameObject EnsureMainStage()
+        {
+            var fbx = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelDir}/MainStage.fbx");
+            if (fbx == null)
+            {
+                Debug.LogWarning("StructurePrefabs: MainStage.fbx not found — legacy M2b stage kept.");
+                return null;
+            }
+
+            var palette = EnsurePalette();
+            EnsureDir(PrefabDir);
+
+            var temp = (GameObject)PrefabUtility.InstantiatePrefab(fbx);
+            foreach (var r in temp.GetComponentsInChildren<Renderer>())
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    if (palette.TryGetValue(mats[i].name, out var mapped)) mats[i] = mapped;
+                    else Debug.LogWarning($"StructurePrefabs: MainStage/{r.name} slot '{mats[i].name}' " +
+                                          "is not a palette name — left as imported.");
+                }
+                r.sharedMaterials = mats;
+            }
+
+            AddIdleMotion(temp, "MainStage");
+
+            string path = $"{PrefabDir}/MainStage.prefab";
+            var prefab = PrefabUtility.SaveAsPrefabAsset(temp, path);
+            Object.DestroyImmediate(temp);
+            return prefab;
+        }
+
         private static GameObject Ensure(string name, System.Func<GameObject> greyboxFallback)
         {
             var fbx = AssetDatabase.LoadAssetAtPath<GameObject>($"{ModelDir}/{name}.fbx");
@@ -81,6 +117,8 @@ namespace PitTycoon.Unity.EditorTools
                 ConfigureIdle(root, "BannerCloth", new Vector3(0f, 0f, 1f), rotationAmplitude: 4f, speed: 0.35f);
             else if (name == "StrobeRig")
                 ConfigureIdle(root, "Heads", new Vector3(0f, 1f, 0f), rotationAmplitude: 25f, speed: 0.15f);
+            else if (name == "MainStage")
+                ConfigureIdle(root, "BannerCloth", new Vector3(0f, 0f, 1f), rotationAmplitude: 4f, speed: 0.35f);
         }
 
         private static void ConfigureIdle(GameObject root, string childName, Vector3 axis,

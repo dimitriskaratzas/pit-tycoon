@@ -356,3 +356,24 @@ reactivity), with random outfit tints per member. Source: `ArtSource/crowd-figur
 - Outfit palette: CrowdController *Outfit Palette* (Inspector, live).
 - Blend feel: `Assets/Settings/CrowdAnimator.controller` blend tree thresholds/clip speeds.
 - Desync: `StyleMember`'s speed jitter range in `CrowdController.cs`.
+
+## M5b — Main-stage refresh
+
+The M2b five-object stage (Stage/Truss/Banner/PA ×2) is now one full rig —
+`Assets/PitTycoon/Art/Models/Structures/MainStage.fbx` (source: `ArtSource/festival-structures.blend`,
+`MainStage` collection): deck, roof truss + canopy, LED backwall, PA wings, sub stacks, banner.
+
+**Build steps:** pull, let the FBX import, run `Pit Tycoon → Build Festival Scene`. The builder
+deletes the legacy objects, places `MainStage` at the old spot, moves the accent lights onto the
+roof truss, and re-wires VenueController (stage = rig root, PA = wings) and the beat-VFX anchor.
+Without the FBX the legacy placement still runs (safe mid-modelling).
+
+**Verify:** old five objects gone; rig palette-colored; banner sways; Stage upgrade scales the whole
+rig (ghost preview included); PA upgrade scales the wings; accent lights sit on the roof; crowd
+dances in front at sane scale.
+
+**Tuning:** palette materials (shared, live); IdleMotion on the prefab (BannerCloth);
+VenueController stageStep/paStep (existing).
+
+**M5c hook contract:** child names `Deck`, `RoofTruss`, `Backwall`, `PAWingL/R`, `SubStackL/R`,
+`BannerCloth` are load-bearing for beat-reactivity — don't rename.
