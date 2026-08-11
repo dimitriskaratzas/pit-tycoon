@@ -51,7 +51,11 @@ namespace PitTycoon.Unity.EditorTools
             var groundMat = CreateMaterial($"{MatDir}/GroundMat.mat", litShader, m => { m.SetColor("_BaseColor", PitFloor); m.SetTexture("_RampTex", ramp); });
             var crowdMat = CreateMaterial($"{MatDir}/CrowdMat.mat", litShader, m => { m.SetColor("_BaseColor", Crowd); m.SetTexture("_RampTex", ramp); });
             CreateMaterial($"{MatDir}/HalftoneMat.mat", halftoneShader, null);
-            CreateMaterial($"{MatDir}/OutlineMat.mat", outlineShader, null);
+            CreateMaterial($"{MatDir}/OutlineMat.mat", outlineShader, m =>
+            {
+                m.SetFloat("_FadeStart", 30f);
+                m.SetFloat("_FadeEnd", 70f);
+            });
 
             CreateVolumeProfile(VolumePath);
             var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumePath);
@@ -74,6 +78,13 @@ namespace PitTycoon.Unity.EditorTools
 
             var cam = Camera.main;
             if (cam != null) { cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Sky; }
+
+            // Fog: on and exponential-squared. AtmosphereController drives color and density
+            // per set; these are the dusk (set 1) values so the scene reads right without it.
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = new Color(0.42f, 0.34f, 0.36f);
+            RenderSettings.fogDensity = 0.010f;
 
             EnsureGlobalVolume(profile);
             EnsureAccentLight("Accent Amber", Amber, new Vector3(-5f, 6f, 1f));
