@@ -21,11 +21,26 @@ No new models. No Domain changes. The visual payload is two new shaders, a fog a
 
 `Assets/PitTycoon/Art/Shaders/ComicLit.shader` and `Outline.shader` contain **no fog support** — no `multi_compile_fog` pragma, no fog coordinate, no `MixFog` call. Every object in the game (ground, crowd, structures) renders with ComicLit, so enabling `RenderSettings.fog` today changes nothing on screen.
 
-Both shaders need:
+The two shaders need different treatments, because they are different kinds of shader:
 
-- `#pragma multi_compile_fog` in the relevant pass.
-- A `float fogCoord` varying on the next free `TEXCOORD` semantic, filled with `ComputeFogFactor(positionCS.z)` in the vertex stage.
-- `color.rgb = MixFog(color.rgb, IN.fogCoord)` at the end of the fragment stage.
+**`ComicLit.shader`** is a per-object forward shader, so it takes the standard URP fog path in its `ForwardLit` pass:
+
+- `#pragma multi_compile_fog`.
+- A `float fogFactor` varying on the next free `TEXCOORD` semantic, filled with `ComputeFogFactor(p.positionCS.z)` in the vertex stage.
+- `color = MixFog(color, IN.fogFactor)` before the fragment stage returns. `MixFogColor` internally checks whether any fog keyword is enabled and returns the color untouched when fog is off, so this is safe with fog disabled.
+
+**`Outline.shader`** is a **full-screen blit pass** — it has no vertex stage of its own and no per-object geometry, so `MixFog` cannot apply. Fogging the ink color would also be wrong: the goal is for distant *edges to weaken*, not for distant ink to turn grey. Instead it gains two explicit float properties, `_FadeStart` and `_FadeEnd`, and attenuates the computed edge by linear eye depth:
+
+```hlsl
+float eye = LinearEyeDepth(SampleSceneDepth(uv), _ZBufferParams);
+edge *= 1.0 - smoothstep(_FadeStart, _FadeEnd, eye);
+```
+
+This is deliberately explicit rather than reading `unity_FogParams`: URP's `ComputeFogIntensity` returns `0.0` when no fog keyword is active, which in a blit pass would silently erase every outline in the scene whenever fog is off.
+
+The attenuation uses the **nearest** of the four depth taps the pass already samples, not the center pixel. At a silhouette against the sky the center pixel is the far plane, so a center-depth fade would erase exactly the outlines that matter most. The nearest tap keeps a close silhouette crisp against a distant background while still fading genuinely far geometry.
+
+`_FadeStart`/`_FadeEnd` are set **once by the editor builder**, not driven per frame. `OutlineMat.mat` is referenced by the renderer's Full Screen Pass feature, so a runtime write would mutate the asset — the same trap as the skybox, without a clean runtime-copy escape. A static range roughly matched to the night fog is sufficient; the fade only has to read as depth, not track fog density exactly.
 
 Outline is included deliberately: without it, silhouette edges stay at full contrast into the far distance while their fill fades, which reads as broken rather than stylised.
 
@@ -54,8 +69,10 @@ All dusk→night motion is four property writes; the shader itself has no notion
 
 Serialized: `dayCurve` (AnimationCurve), `setsToNight` (int, default 4), dusk and night values for each driven property, `transitionSeconds` (default ~2), hype→beam response ranges.
 
-- **On `SetStarted`:** advance the set index (the first set of a run is index 0, so it evaluates to phase 0 = full dusk), evaluate `phase = dayCurve.Evaluate(min(index, setsToNight) / (float)setsToNight)`, and animate toward the phase-appropriate values over `transitionSeconds` so dusk visibly falls instead of popping between sets. Driven: skybox `_HorizonColor` / `_ZenithColor` / `_StarStrength`, `RenderSettings.fogColor` and `fogDensity`, the directional light's color and intensity, and `RenderSettings.ambientSkyColor`.
-- **Per frame:** read `IHypeMeter.HypeFraction` and drive beam `_Intensity`, beam sweep speed, and accent-light intensity between their serialized low and high values. A dim, slow, sleepy rig at low hype; a blazing sweeping light show at full.
+- **On `SetStarted`:** read `e.SetNumber`, which `SetController` publishes 1-based (set 1 is the first of a run), and evaluate `phase = dayCurve.Evaluate(clamp01((e.SetNumber - 1) / (float)setsToNight))` — so set 1 is phase 0 = full dusk and set `setsToNight + 1` onward is phase 1 = full night. Then animate toward the phase-appropriate values over `transitionSeconds` so dusk visibly falls instead of popping between sets. Driven: skybox `_HorizonColor` / `_ZenithColor` / `_StarStrength`, `RenderSettings.fogColor` and `fogDensity`, the directional light's color and intensity, and `RenderSettings.ambientLight`. Ambient is switched to `AmbientMode.Flat` by the builder so a single color drives it deterministically — under the default Skybox ambient mode the value would come from the custom sky's spherical harmonics and need a `DynamicGI.UpdateEnvironment()` every set.
+- **Per frame:** read `IHypeMeter.HypeFraction` and drive beam `_Intensity` and beam sweep speed between their serialized low and high values. A dim, slow, sleepy rig at low hype; a blazing sweeping light show at full.
+
+**Accent-light intensity is deliberately NOT hype-driven.** `VenueController.ApplyLighting` already owns `accentLights[i].intensity`, writing `base + lightStep * level` when the Lighting upgrade is purchased. A per-frame write from `AtmosphereController` would overwrite it on the next frame and make a paid upgrade invisible. One writer per property: accent intensity stays upgrade-owned, and the hype read is carried entirely by the beams — which take their color from those same lights, so the rig still reads as one responding system.
 
 **Skybox material trap (called out because it bites first-time Unity devs):** writing to `RenderSettings.skybox`'s material at runtime mutates the **asset**, and the change persists after exiting Play mode — the scene's sky would be permanently left at whatever the last set looked like. `AtmosphereController` instantiates a runtime copy of the material in `Awake` (`new Material(skyMaterial)`) and assigns that to `RenderSettings.skybox`, so the asset is never touched.
 
@@ -88,7 +105,9 @@ Everything degrades gracefully in the established idiom: missing objects warn an
 
 ## M5c handoff
 
-`AtmosphereController` owns the **base** intensity of the beams and accent lights. M5c's `BeatPulse` adds its envelope on top and re-captures its base when the envelope is idle — the rule already written into the M5c plan for exactly this kind of co-ownership. No conflict, and the beams give `BeatPulse` the largest reactive surface in the scene.
+`AtmosphereController` owns the **base** intensity of the beams. M5c's `BeatPulse` adds its envelope on top and re-captures its base when the envelope is idle — the rule already written into the M5c plan for exactly this kind of co-ownership. No conflict, and the beams give `BeatPulse` the largest reactive surface in the scene.
+
+Property ownership after both milestones ship, so nothing is written twice: `VenueController` owns accent-light intensity (upgrade level), `AtmosphereController` owns the directional light, sky, fog, and beam base intensity (set index + hype), `BeatPulse` owns short-lived additive punches on top (beats).
 
 ## Testing & verification
 
@@ -97,9 +116,10 @@ Everything degrades gracefully in the established idiom: missing objects warn an
   1. Fog visibly affects crowd and structures at distance, and outlines fade with their fills.
   2. Set 1 reads as golden-hour dusk; the sky darkens each set and reaches full night by `setsToNight`; stars fade in as it darkens; the transition animates rather than popping.
   3. Beams are visible from the default camera and from free-look angles, including flying through one.
-  4. Beams and accents brighten and sweep faster as hype rises within a set, and settle back at set start.
-  5. Exiting Play mode leaves the scene's sky asset unmodified (the runtime-copy check).
-  6. M1–M5b regression intact: abilities, upgrades, build spots, ghost previews, and the existing beat VFX all still behave.
+  4. Beams brighten and sweep faster as hype rises within a set, and settle back at set start.
+  5. The Lighting upgrade still visibly brightens the accent lights and holds — proof `AtmosphereController` is not overwriting `VenueController`.
+  6. Exiting Play mode leaves the scene's sky asset unmodified (the runtime-copy check).
+  7. M1–M5b regression intact: abilities, upgrades, build spots, ghost previews, and the existing beat VFX all still behave.
 
 ## Out of scope
 
