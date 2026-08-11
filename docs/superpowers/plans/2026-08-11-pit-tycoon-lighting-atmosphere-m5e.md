@@ -60,8 +60,10 @@ In `ComicLit.shader`, add the pragma after the existing `_CLUSTER_LIGHT_LOOP` li
 Replace the `Varyings` struct (line 44) to add a fog factor on the next free TEXCOORD:
 
 ```hlsl
-            struct Varyings { float4 positionHCS:SV_POSITION; float2 uv:TEXCOORD0; float3 normalWS:TEXCOORD1; float3 positionWS:TEXCOORD2; float fogFactor:TEXCOORD3; };
+            struct Varyings { float4 positionHCS:SV_POSITION; float2 uv:TEXCOORD0; float3 normalWS:TEXCOORD1; float3 positionWS:TEXCOORD2; half fogFactor:TEXCOORD3; };
 ```
+
+Type `fogFactor` as `half` (not `float`) so that the `MixFog(color, IN.fogFactor)` call in the fragment stage matches the `(half3, half)` overload exactly: URP defines exactly two overloads, `MixFog(half3, half)` and `MixFog(float3, float)`, and a `half3` colour with a `float` factor matches neither.
 
 - [ ] **Step 2: Fill the fog factor in the vertex stage**
 

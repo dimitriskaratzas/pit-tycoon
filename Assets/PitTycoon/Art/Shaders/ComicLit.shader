@@ -42,7 +42,7 @@ Shader "PitTycoon/ComicLit"
             TEXTURE2D(_RampTex); SAMPLER(sampler_RampTex);
 
             struct Attributes { float4 positionOS:POSITION; float3 normalOS:NORMAL; float2 uv:TEXCOORD0; };
-            struct Varyings { float4 positionHCS:SV_POSITION; float2 uv:TEXCOORD0; float3 normalWS:TEXCOORD1; float3 positionWS:TEXCOORD2; float fogFactor:TEXCOORD3; };
+            struct Varyings { float4 positionHCS:SV_POSITION; float2 uv:TEXCOORD0; float3 normalWS:TEXCOORD1; float3 positionWS:TEXCOORD2; half fogFactor:TEXCOORD3; };
 
             Varyings vert(Attributes IN)
             {
