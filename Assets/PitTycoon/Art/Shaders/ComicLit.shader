@@ -25,6 +25,7 @@ Shader "PitTycoon/ComicLit"
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
+            #pragma multi_compile_fog
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
@@ -41,7 +42,7 @@ Shader "PitTycoon/ComicLit"
             TEXTURE2D(_RampTex); SAMPLER(sampler_RampTex);
 
             struct Attributes { float4 positionOS:POSITION; float3 normalOS:NORMAL; float2 uv:TEXCOORD0; };
-            struct Varyings { float4 positionHCS:SV_POSITION; float2 uv:TEXCOORD0; float3 normalWS:TEXCOORD1; float3 positionWS:TEXCOORD2; };
+            struct Varyings { float4 positionHCS:SV_POSITION; float2 uv:TEXCOORD0; float3 normalWS:TEXCOORD1; float3 positionWS:TEXCOORD2; half fogFactor:TEXCOORD3; };
 
             Varyings vert(Attributes IN)
             {
@@ -51,6 +52,7 @@ Shader "PitTycoon/ComicLit"
                 OUT.positionWS = p.positionWS;
                 OUT.normalWS = TransformObjectToWorldNormal(IN.normalOS);
                 OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);
+                OUT.fogFactor = ComputeFogFactor(p.positionCS.z);
                 return OUT;
             }
 
@@ -92,6 +94,7 @@ Shader "PitTycoon/ComicLit"
                 half rim = pow(saturate(1.0 - saturate(dot(N, V))), _RimPower);
                 color += _RimColor.rgb * (rim * _RimColor.a);
 
+                color = MixFog(color, IN.fogFactor);
                 return half4(color, baseCol.a);
             }
             ENDHLSL

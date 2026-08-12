@@ -124,6 +124,9 @@ namespace PitTycoon.Unity
             foreach (var c in ghost.GetComponentsInChildren<Collider>()) Destroy(c);
             foreach (var l in ghost.GetComponentsInChildren<Light>()) Destroy(l);
             foreach (var im in ghost.GetComponentsInChildren<IdleMotion>()) Destroy(im);
+            // LightBeam cones are parented under the accent lights inside this rig; the cone mesh
+            // itself is the visible artifact, so destroy the whole GameObject, not just the component.
+            foreach (var beam in ghost.GetComponentsInChildren<LightBeam>()) Destroy(beam.gameObject);
             if (ghostMaterial != null)
                 foreach (var r in ghost.GetComponentsInChildren<Renderer>()) r.sharedMaterial = ghostMaterial;
             return ghost;

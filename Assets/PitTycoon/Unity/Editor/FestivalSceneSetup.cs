@@ -20,6 +20,7 @@ namespace PitTycoon.Unity.EditorTools
 
         private static readonly Color Structure = new Color(0.14f, 0.12f, 0.16f);
         private static readonly Color Crowd = new Color(0.16f, 0.13f, 0.18f);
+        private static readonly Vector3 PitCenter = new Vector3(0f, 0.5f, 0f);
 
         [MenuItem("Pit Tycoon/Build Festival Scene (M2b)")]
         public static void BuildFestivalScene()
@@ -106,8 +107,11 @@ namespace PitTycoon.Unity.EditorTools
                 ReparentLight("Accent Cyan", lightMount.transform, new Vector3(0f, 4f, 9f));
             }
 
+            var beams = EnsureBeams();
+
             WireBeatVfx(lit, stage);
             WireVenue(stage, paLeft, paRight);
+            WireAtmosphere(beams);
 
             var active = EditorSceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(active);
@@ -141,6 +145,47 @@ namespace PitTycoon.Unity.EditorTools
             {
                 var bso = new SerializedObject(boot);
                 SetRef(bso, "beatVfx", ctrl);
+                bso.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(boot);
+            }
+        }
+
+        private static void WireAtmosphere(LightBeam[] beams)
+        {
+            var systems = GameObject.Find("Systems");
+            if (systems == null) return;
+            var ctrl = systems.GetComponent<AtmosphereController>();
+            if (ctrl == null) ctrl = systems.AddComponent<AtmosphereController>();
+
+            var skyMat = AssetDatabase.LoadAssetAtPath<Material>($"{MatDir}/ComicSky.mat");
+            if (skyMat == null)
+                Debug.LogWarning("FestivalSceneSetup: ComicSky.mat missing — run Apply Comic Look (M2a) first.");
+
+            var sunGo = GameObject.Find("Directional Light");
+            var sun = sunGo != null ? sunGo.GetComponent<Light>() : null;
+
+            var aso = new SerializedObject(ctrl);
+            SetRef(aso, "skyMaterial", skyMat);
+            SetRef(aso, "sun", sun);
+            // Only rewrite when we actually found beams: re-running this builder alone destroys
+            // the MainStage rig (and the accent lights reparented onto it), so EnsureBeams can
+            // legitimately return empty. Clearing the array there would silently drop the beams
+            // with no obvious way back — the recovery is to re-run Apply Comic Look first.
+            var arr = aso.FindProperty("beams");
+            if (arr != null && beams.Length > 0)
+            {
+                arr.arraySize = beams.Length;
+                for (int i = 0; i < beams.Length; i++)
+                    arr.GetArrayElementAtIndex(i).objectReferenceValue = beams[i];
+            }
+            aso.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(ctrl);
+
+            var boot = Object.FindAnyObjectByType<GameBootstrap>();
+            if (boot != null)
+            {
+                var bso = new SerializedObject(boot);
+                SetRef(bso, "atmosphere", ctrl);
                 bso.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(boot);
             }
@@ -211,12 +256,16 @@ namespace PitTycoon.Unity.EditorTools
             return inst;
         }
 
+        /// <summary>Move a rig light onto the stage's light mount. Re-aims after moving: these
+        /// are spots (M5e), so the rotation baked at the authored position in ComicLookSetup
+        /// points from the wrong place once the light lands on the truss.</summary>
         private static void ReparentLight(string name, Transform parent, Vector3 worldPos)
         {
             var go = GameObject.Find(name);
             if (go == null) return;
             go.transform.SetParent(parent, true);
             go.transform.position = worldPos;
+            go.transform.rotation = Quaternion.LookRotation((PitCenter - worldPos).normalized, Vector3.up);
         }
 
         private static Material LoadOrCreateMat(string path, Shader shader, Color baseColor)
@@ -229,6 +278,128 @@ namespace PitTycoon.Unity.EditorTools
             if (ramp != null) mat.SetTexture("_RampTex", ramp);
             EditorUtility.SetDirty(mat);
             return mat;
+        }
+
+        private const string BeamMeshPath = "Assets/PitTycoon/Art/Models/BeamCone.asset";
+        private const string BeamMatPath = "Assets/PitTycoon/Art/Materials/LightBeamMat.mat";
+        private const string BeamPrefabPath = "Assets/PitTycoon/Art/Prefabs/LightBeam.prefab";
+
+        /// <summary>Open-ended cone: apex at the origin, opening along -Y to radius/length.
+        /// uv.y runs 0 at the apex to 1 at the open end, which the beam shader fades along.
+        /// No caps — a capped cone reads as a solid object, not a shaft of light.</summary>
+        private static Mesh BuildBeamCone(int segments, float radius, float length)
+        {
+            var verts = new Vector3[segments * 2];
+            var uvs = new Vector2[segments * 2];
+            var tris = new int[segments * 3];
+
+            for (int i = 0; i < segments; i++)
+            {
+                float a = (i / (float)segments) * Mathf.PI * 2f;
+                var ring = new Vector3(Mathf.Cos(a) * radius, -length, Mathf.Sin(a) * radius);
+                verts[i * 2] = Vector3.zero;      // apex, duplicated per segment for clean normals
+                verts[i * 2 + 1] = ring;
+                uvs[i * 2] = new Vector2(i / (float)segments, 0f);
+                uvs[i * 2 + 1] = new Vector2(i / (float)segments, 1f);
+            }
+
+            for (int i = 0; i < segments; i++)
+            {
+                int a0 = i * 2, a1 = i * 2 + 1;
+                int b1 = ((i + 1) % segments) * 2 + 1;
+                int t = i * 3;
+                // One triangle per segment: apex + this segment's ring vertex + the next one.
+                // A second triangle would span two apex vertices that share the origin — zero area.
+                tris[t] = a0; tris[t + 1] = a1; tris[t + 2] = b1;
+            }
+
+            var mesh = new Mesh { name = "BeamCone" };
+            mesh.vertices = verts;
+            mesh.uv = uvs;
+            mesh.triangles = tris;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        private static GameObject EnsureBeamPrefab()
+        {
+            var beamShader = Shader.Find("PitTycoon/LightBeam");
+            if (beamShader == null)
+            {
+                Debug.LogWarning("FestivalSceneSetup: PitTycoon/LightBeam shader missing — beams skipped.");
+                return null;
+            }
+
+            var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(BeamMeshPath);
+            if (mesh == null)
+            {
+                mesh = BuildBeamCone(24, 3.2f, 16f);
+                AssetDatabase.CreateAsset(mesh, BeamMeshPath);
+            }
+
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(BeamMatPath);
+            if (mat == null) { mat = new Material(beamShader); AssetDatabase.CreateAsset(mat, BeamMatPath); }
+            mat.shader = beamShader;
+            EditorUtility.SetDirty(mat);
+
+            // Idempotent: an existing prefab is kept, not rebuilt. Re-running the builder must
+            // not revert per-beam tuning (sweepAxis, sweepDegrees) the developer set on it.
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(BeamPrefabPath);
+            if (existing != null) return existing;
+
+            var temp = new GameObject("LightBeam");
+            temp.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = temp.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = mat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            temp.AddComponent<LightBeam>();
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(temp, BeamPrefabPath);
+            Object.DestroyImmediate(temp);
+            return prefab;
+        }
+
+        /// <summary>Hang a beam cone under each accent light, aligned to the light's aim.
+        /// The prefab's cone opens along -Y, so a local -90 X rotation points it down the
+        /// parent light's +Z (forward) axis. Phases are staggered so they never sweep in unison.</summary>
+        private static LightBeam[] EnsureBeams()
+        {
+            var prefab = EnsureBeamPrefab();
+            if (prefab == null) return new LightBeam[0];
+
+            var beams = new System.Collections.Generic.List<LightBeam>();
+            string[] lightNames = { "Accent Amber", "Accent Magenta", "Accent Cyan" };
+
+            for (int i = 0; i < lightNames.Length; i++)
+            {
+                var lightGo = GameObject.Find(lightNames[i]);
+                if (lightGo == null)
+                {
+                    Debug.LogWarning($"FestivalSceneSetup: '{lightNames[i]}' not found — beam skipped.");
+                    continue;
+                }
+
+                var old = lightGo.transform.Find("LightBeam");
+                if (old != null) Object.DestroyImmediate(old.gameObject);
+
+                var beamGo = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                beamGo.name = "LightBeam";
+                beamGo.transform.SetParent(lightGo.transform, false);
+                beamGo.transform.localPosition = Vector3.zero;
+                beamGo.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+
+                var beam = beamGo.GetComponent<LightBeam>();
+                var bso = new SerializedObject(beam);
+                var phase = bso.FindProperty("phaseOffset");
+                if (phase != null) phase.floatValue = i / (float)lightNames.Length;
+                bso.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(beam);
+
+                beams.Add(beam);
+            }
+            return beams.ToArray();
         }
 
         private static void EnsureFolder(string path)

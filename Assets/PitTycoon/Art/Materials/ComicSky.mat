@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: OutlineMat
-  m_Shader: {fileID: 4800000, guid: 0a45a80f899ef8c48af4e93638e5ac2e, type: 3}
+  m_Name: ComicSky
+  m_Shader: {fileID: 4800000, guid: 8c2f4fe932e4ce5468c0f67e5f67096f, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -25,12 +25,14 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _DepthSensitivity: 0.4
-    - _FadeEnd: 70
-    - _FadeStart: 30
-    - _NormalSensitivity: 2
-    - _Thickness: 1.4
+    - _GradientPower: 1.2
+    - _MoonSize: 0.985
+    - _StarDensity: 220
+    - _StarStrength: 0
     m_Colors:
-    - _InkColor: {r: 0.06999998, g: 0.059999965, b: 0.089999996, a: 1}
+    - _HorizonColor: {r: 0.98, g: 0.55, b: 0.28, a: 1}
+    - _MoonColor: {r: 1, g: 0.96999997, b: 0.88, a: 1}
+    - _MoonDir: {r: 0.35, g: 0.42, b: 0.84, a: 0}
+    - _ZenithColor: {r: 0.24, g: 0.26, b: 0.48, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
