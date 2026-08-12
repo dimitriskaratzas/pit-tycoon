@@ -249,7 +249,7 @@ namespace PitTycoon.Unity.EditorTools
         {
             var verts = new Vector3[segments * 2];
             var uvs = new Vector2[segments * 2];
-            var tris = new int[segments * 6];
+            var tris = new int[segments * 3];
 
             for (int i = 0; i < segments; i++)
             {
@@ -264,11 +264,11 @@ namespace PitTycoon.Unity.EditorTools
             for (int i = 0; i < segments; i++)
             {
                 int a0 = i * 2, a1 = i * 2 + 1;
-                int n = (i + 1) % segments;
-                int b0 = n * 2, b1 = n * 2 + 1;
-                int t = i * 6;
+                int b1 = ((i + 1) % segments) * 2 + 1;
+                int t = i * 3;
+                // One triangle per segment: apex + this segment's ring vertex + the next one.
+                // A second triangle would span two apex vertices that share the origin — zero area.
                 tris[t] = a0; tris[t + 1] = a1; tris[t + 2] = b1;
-                tris[t + 3] = a0; tris[t + 4] = b1; tris[t + 5] = b0;
             }
 
             var mesh = new Mesh { name = "BeamCone" };
@@ -300,6 +300,11 @@ namespace PitTycoon.Unity.EditorTools
             if (mat == null) { mat = new Material(beamShader); AssetDatabase.CreateAsset(mat, BeamMatPath); }
             mat.shader = beamShader;
             EditorUtility.SetDirty(mat);
+
+            // Idempotent: an existing prefab is kept, not rebuilt. Re-running the builder must
+            // not revert per-beam tuning (sweepAxis, sweepDegrees) the developer set on it.
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(BeamPrefabPath);
+            if (existing != null) return existing;
 
             var temp = new GameObject("LightBeam");
             temp.AddComponent<MeshFilter>().sharedMesh = mesh;
