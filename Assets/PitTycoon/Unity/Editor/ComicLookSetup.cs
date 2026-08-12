@@ -28,6 +28,9 @@ namespace PitTycoon.Unity.EditorTools
         private static readonly Color Amber = new Color(1.00f, 0.69f, 0.24f);
         private static readonly Color Magenta = new Color(0.88f, 0.27f, 0.49f);
         private static readonly Color Cyan = new Color(0.21f, 0.79f, 0.88f);
+        private static readonly Color DuskHorizon = new Color(0.98f, 0.55f, 0.28f);
+        private static readonly Color DuskZenith = new Color(0.24f, 0.26f, 0.48f);
+        private static readonly Vector3 PitCenter = new Vector3(0f, 0.5f, 0f);
 
         [MenuItem("Pit Tycoon/Apply Comic Look (M2a)")]
         public static void ApplyComicLook()
@@ -41,6 +44,7 @@ namespace PitTycoon.Unity.EditorTools
             var litShader = Shader.Find("PitTycoon/ComicLit");
             var halftoneShader = Shader.Find("PitTycoon/Halftone");
             var outlineShader = Shader.Find("PitTycoon/Outline");
+            var skyShader = Shader.Find("PitTycoon/ComicSky");
             if (litShader == null || halftoneShader == null || outlineShader == null)
             {
                 EditorUtility.DisplayDialog("Pit Tycoon",
@@ -56,6 +60,18 @@ namespace PitTycoon.Unity.EditorTools
                 m.SetFloat("_FadeStart", 30f);
                 m.SetFloat("_FadeEnd", 70f);
             });
+
+            Material skyMat = null;
+            if (skyShader != null)
+            {
+                skyMat = CreateMaterial($"{MatDir}/ComicSky.mat", skyShader, m =>
+                {
+                    m.SetColor("_HorizonColor", DuskHorizon);
+                    m.SetColor("_ZenithColor", DuskZenith);
+                    m.SetFloat("_StarStrength", 0f);
+                });
+            }
+            else Debug.LogWarning("ComicLookSetup: PitTycoon/ComicSky not found — sky left as camera clear color.");
 
             CreateVolumeProfile(VolumePath);
             var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumePath);
@@ -77,7 +93,18 @@ namespace PitTycoon.Unity.EditorTools
             }
 
             var cam = Camera.main;
-            if (cam != null) { cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = Sky; }
+            if (cam != null)
+            {
+                cam.clearFlags = skyMat != null ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
+                cam.backgroundColor = Sky;
+            }
+            if (skyMat != null) RenderSettings.skybox = skyMat;
+
+            // Flat ambient so one color drives it deterministically. Under the default Skybox
+            // ambient mode the value is derived from the custom sky's spherical harmonics and
+            // would need a DynamicGI.UpdateEnvironment() every time the sky changes.
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.30f, 0.28f, 0.34f);
 
             // Fog: on and exponential-squared. AtmosphereController drives color and density
             // per set; these are the dusk (set 1) values so the scene reads right without it.
@@ -85,6 +112,20 @@ namespace PitTycoon.Unity.EditorTools
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = new Color(0.42f, 0.34f, 0.36f);
             RenderSettings.fogDensity = 0.010f;
+
+            // The sun is now a cool fill, not a daylight key. AtmosphereController animates
+            // these per set; these are the dusk values.
+            var sunGo = GameObject.Find("Directional Light");
+            if (sunGo != null)
+            {
+                var sun = sunGo.GetComponent<Light>();
+                if (sun != null)
+                {
+                    sun.color = new Color(1f, 0.78f, 0.52f);
+                    sun.intensity = 0.9f;
+                }
+            }
+            else Debug.LogWarning("ComicLookSetup: 'Directional Light' not found — sun left unchanged.");
 
             EnsureGlobalVolume(profile);
             EnsureAccentLight("Accent Amber", Amber, new Vector3(-5f, 6f, 1f));
@@ -167,13 +208,21 @@ namespace PitTycoon.Unity.EditorTools
             vol.isGlobal = true; vol.priority = 1f; vol.profile = profile;
         }
 
+        /// <summary>Rig light: a spot aimed down at the pit, so the beam cones (M5e) have a
+        /// direction to follow and the crowd gets pools of colour instead of flat point fill.</summary>
         private static void EnsureAccentLight(string name, Color color, Vector3 pos)
         {
             var go = GameObject.Find(name);
             if (go == null) go = new GameObject(name);
             go.transform.position = pos;
+            go.transform.rotation = Quaternion.LookRotation((PitCenter - pos).normalized, Vector3.up);
             var light = go.GetComponent<Light>(); if (light == null) light = go.AddComponent<Light>();
-            light.type = LightType.Point; light.color = color; light.intensity = 3.5f; light.range = 22f;
+            light.type = LightType.Spot;
+            light.color = color;
+            light.intensity = 8f;
+            light.range = 34f;
+            light.spotAngle = 46f;
+            light.innerSpotAngle = 18f;
         }
 
         private static void EnsureFolder(string path)
