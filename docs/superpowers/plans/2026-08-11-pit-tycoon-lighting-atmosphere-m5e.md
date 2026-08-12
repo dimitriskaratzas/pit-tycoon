@@ -720,21 +720,64 @@ Then call it from `BuildFestivalScene`, replacing the `WireBeatVfx(lit, stage);`
 
 (`beams` is consumed by Task 4; until then the assignment is unused and the compiler will warn — that is expected and is resolved in the next task.)
 
-- [ ] **Step 5: Verify the Domain suite is untouched**
+- [ ] **Step 5: Re-aim the accent lights after they are reparented**
+
+Found in review of Task 2, and it must land before the beams do. `ComicLookSetup.EnsureAccentLight` bakes each spot's rotation from its M2a authored position toward the pit. `FestivalSceneSetup.ReparentLight` then runs in the normal build order and **moves the light to a different position on the roof truss, overwriting only `transform.position`** — the rotation stays aimed from where the light used to be.
+
+Measured for "Accent Amber": authored at `(-5, 6, 1)`, re-placed at `(-2.5, 4, 9)`, leaving the aim ~57° off target against a 23° spot half-angle. The cone misses the pit entirely, and the Task 3 beams inherit that aim because they align to their parent light.
+
+While they were point lights this was invisible — position was all that mattered. Converting them to spots in Task 2 is what made rotation load-bearing.
+
+In `FestivalSceneSetup.cs`, replace `ReparentLight`:
+
+```csharp
+        private static void ReparentLight(string name, Transform parent, Vector3 worldPos)
+        {
+            var go = GameObject.Find(name);
+            if (go == null) return;
+            go.transform.SetParent(parent, true);
+            go.transform.position = worldPos;
+        }
+```
+
+with:
+
+```csharp
+        /// <summary>Move a rig light onto the stage's light mount. Re-aims after moving: these
+        /// are spots (M5e), so the rotation baked at the authored position in ComicLookSetup
+        /// points from the wrong place once the light lands on the truss.</summary>
+        private static void ReparentLight(string name, Transform parent, Vector3 worldPos)
+        {
+            var go = GameObject.Find(name);
+            if (go == null) return;
+            go.transform.SetParent(parent, true);
+            go.transform.position = worldPos;
+            go.transform.rotation = Quaternion.LookRotation((PitCenter - worldPos).normalized, Vector3.up);
+        }
+```
+
+and add the pit-centre constant next to the other `FestivalSceneSetup` statics (it must match the value `ComicLookSetup` uses):
+
+```csharp
+        private static readonly Vector3 PitCenter = new Vector3(0f, 0.5f, 0f);
+```
+
+- [ ] **Step 6: Verify the Domain suite is untouched**
 
 Run: `dotnet test PitTycoon.Domain.slnx`
 Expected: `Passed! - Failed: 0, Passed: 98`
 
-- [ ] **Step 6: Developer Editor checkpoint**
+- [ ] **Step 7: Developer Editor checkpoint**
 
 1. Let Unity recompile; confirm no errors for `PitTycoon/LightBeam` or `LightBeam.cs`.
 2. Run `Pit Tycoon → Build Festival Scene (M2b)`.
 3. Expected: three glowing cones hanging from the accent lights, each tinted to its light's colour, angled down at the pit.
-4. Press Play. The cones should sweep slowly and out of phase with each other.
-5. Fly the free-look camera through a cone. It must stay visible from inside (`Cull Off`) rather than vanishing.
-6. If a cone sweeps up-and-down instead of side-to-side, set `sweepAxis` to `(1,0,0)` on the prefab — the axis is exposed for exactly this.
+4. Confirm the *lit pools* land on the crowd too, not just the cones — that is the Step 5 re-aim working. If the pools sit behind or beside the pit, the rotation fix did not take.
+5. Press Play. The cones should sweep slowly and out of phase with each other.
+6. Fly the free-look camera through a cone. It must stay visible from inside (`Cull Off`) rather than vanishing.
+7. If a cone sweeps up-and-down instead of side-to-side, set `sweepAxis` to `(1,0,0)` on the prefab — the axis is exposed for exactly this.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add Assets/PitTycoon/Art/Shaders/LightBeam.shader Assets/PitTycoon/Unity/LightBeam.cs Assets/PitTycoon/Unity/Editor/FestivalSceneSetup.cs
