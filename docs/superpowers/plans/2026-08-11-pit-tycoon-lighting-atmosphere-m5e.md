@@ -226,16 +226,17 @@ Shader "PitTycoon/ComicSky"
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            CBUFFER_START(UnityPerMaterial)
-                float4 _HorizonColor;
-                float4 _ZenithColor;
-                float _GradientPower;
-                float _StarStrength;
-                float _StarDensity;
-                float4 _MoonDir;
-                float _MoonSize;
-                float4 _MoonColor;
-            CBUFFER_END
+            // Loose uniforms, not a UnityPerMaterial CBUFFER: skyboxes are drawn by the engine's
+            // legacy skybox path rather than through the SRP Batcher (Unity's own skybox shaders
+            // do the same), and there is no SRP Batcher benefit to preserve here.
+            float4 _HorizonColor;
+            float4 _ZenithColor;
+            float _GradientPower;
+            float _StarStrength;
+            float _StarDensity;
+            float4 _MoonDir;
+            float _MoonSize;
+            float4 _MoonColor;
 
             struct Attributes { float4 positionOS:POSITION; };
             struct Varyings { float4 positionHCS:SV_POSITION; float3 dir:TEXCOORD0; };
@@ -539,6 +540,7 @@ namespace PitTycoon.Unity
         private Quaternion _baseRotation;
         private float _intensity = 1f;
         private float _speedScale = 1f;
+        private float _sweepPhase;
 
         /// <summary>Sweep rate multiplier; 1 is the serialized base speed.</summary>
         public void SetSweepScale(float scale) => _speedScale = Mathf.Max(0f, scale);
@@ -567,7 +569,11 @@ namespace PitTycoon.Unity
 
         private void Update()
         {
-            float angle = Mathf.Sin((Time.time * sweepSpeed * _speedScale + phaseOffset) * Mathf.PI * 2f) * sweepDegrees;
+            // Accumulate phase rather than scaling absolute time: AtmosphereController rewrites
+            // _speedScale every frame from hype, and scaling Time.time would jump the sine's
+            // argument by Time.time * delta-scale each time it changes — the cone would strobe.
+            _sweepPhase += Time.deltaTime * sweepSpeed * _speedScale;
+            float angle = Mathf.Sin((_sweepPhase + phaseOffset) * Mathf.PI * 2f) * sweepDegrees;
             transform.localRotation = _baseRotation * Quaternion.AngleAxis(angle, sweepAxis);
         }
 
@@ -988,8 +994,12 @@ In `FestivalSceneSetup.cs`, add this method next to `WireBeatVfx`:
             var aso = new SerializedObject(ctrl);
             SetRef(aso, "skyMaterial", skyMat);
             SetRef(aso, "sun", sun);
+            // Only rewrite when we actually found beams: re-running this builder alone destroys
+            // the MainStage rig (and the accent lights reparented onto it), so EnsureBeams can
+            // legitimately return empty. Clearing the array there would silently drop the beams
+            // with no obvious way back — the recovery is to re-run Apply Comic Look first.
             var arr = aso.FindProperty("beams");
-            if (arr != null)
+            if (arr != null && beams.Length > 0)
             {
                 arr.arraySize = beams.Length;
                 for (int i = 0; i < beams.Length; i++)

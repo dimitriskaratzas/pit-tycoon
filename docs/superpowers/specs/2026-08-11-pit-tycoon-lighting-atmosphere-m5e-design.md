@@ -114,7 +114,7 @@ Property ownership after both milestones ship, so nothing is written twice: `Ven
 - `dotnet test PitTycoon.Domain.slnx` — unchanged, stays at 98 passing. This milestone adds no Domain code.
 - The work is inherently visual; correctness is an Editor checkpoint list:
   1. Fog visibly affects crowd and structures at distance, and outlines fade with their fills.
-  2. Set 1 reads as golden-hour dusk; the sky darkens each set and reaches full night by `setsToNight`; stars fade in as it darkens; the transition animates rather than popping.
+  2. Set 1 reads as golden-hour dusk; the sky darkens each set and reaches full night by set `setsToNight + 1`; stars fade in as it darkens; the transition animates rather than popping.
   3. Beams are visible from the default camera and from free-look angles, including flying through one.
   4. Beams brighten and sweep faster as hype rises within a set, and settle back at set start.
   5. The Lighting upgrade still visibly brightens the accent lights and holds — proof `AtmosphereController` is not overwriting `VenueController`.
@@ -133,6 +133,6 @@ Property ownership after both milestones ship, so nothing is written twice: `Ven
 
 - `dayCurve`, `setsToNight`, `transitionSeconds`, and every dusk/night color and intensity pair (Inspector, live).
 - Per-beam sweep arc, base speed, and phase offset (Inspector, live).
-- Hype→intensity response ranges for beams and accents (Inspector, live).
+- Hype→intensity response ranges for beams (Inspector, live).
 - Fog density and color pairs; spot angle and range on the accent lights.
 - Bloom, color grading, and vignette in the existing `ComicLook.asset` volume profile, which the new brighter night look will likely want re-balanced.

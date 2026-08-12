@@ -24,16 +24,17 @@ Shader "PitTycoon/ComicSky"
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            CBUFFER_START(UnityPerMaterial)
-                float4 _HorizonColor;
-                float4 _ZenithColor;
-                float _GradientPower;
-                float _StarStrength;
-                float _StarDensity;
-                float4 _MoonDir;
-                float _MoonSize;
-                float4 _MoonColor;
-            CBUFFER_END
+            // Loose uniforms, not a UnityPerMaterial CBUFFER: skyboxes are drawn by the engine's
+            // legacy skybox path rather than through the SRP Batcher (Unity's own skybox shaders
+            // do the same), and there is no SRP Batcher benefit to preserve here.
+            float4 _HorizonColor;
+            float4 _ZenithColor;
+            float _GradientPower;
+            float _StarStrength;
+            float _StarDensity;
+            float4 _MoonDir;
+            float _MoonSize;
+            float4 _MoonColor;
 
             struct Attributes { float4 positionOS:POSITION; };
             struct Varyings { float4 positionHCS:SV_POSITION; float3 dir:TEXCOORD0; };

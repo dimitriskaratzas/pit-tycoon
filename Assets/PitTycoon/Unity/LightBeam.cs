@@ -28,6 +28,7 @@ namespace PitTycoon.Unity
         private Quaternion _baseRotation;
         private float _intensity = 1f;
         private float _speedScale = 1f;
+        private float _sweepPhase;
 
         /// <summary>Sweep rate multiplier; 1 is the serialized base speed.</summary>
         public void SetSweepScale(float scale) => _speedScale = Mathf.Max(0f, scale);
@@ -56,7 +57,11 @@ namespace PitTycoon.Unity
 
         private void Update()
         {
-            float angle = Mathf.Sin((Time.time * sweepSpeed * _speedScale + phaseOffset) * Mathf.PI * 2f) * sweepDegrees;
+            // Accumulate phase rather than scaling absolute time: AtmosphereController rewrites
+            // _speedScale every frame from hype, and scaling Time.time would jump the sine's
+            // argument by Time.time * delta-scale each time it changes — the cone would strobe.
+            _sweepPhase += Time.deltaTime * sweepSpeed * _speedScale;
+            float angle = Mathf.Sin((_sweepPhase + phaseOffset) * Mathf.PI * 2f) * sweepDegrees;
             transform.localRotation = _baseRotation * Quaternion.AngleAxis(angle, sweepAxis);
         }
 

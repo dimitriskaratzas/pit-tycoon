@@ -411,8 +411,11 @@ features from M2a must already be on `PC_Renderer.asset` (unchanged by this mile
 - `AtmosphereController` on `Systems`: `dayCurve`, `setsToNight`, `transitionSeconds`, and every
   dusk/night colour and intensity pair. All live in Play mode.
 - `beamIntensityLow/High` and `beamSweepLow/High` — the hype response.
-- `LightBeam` on each beam: `sweepDegrees`, `sweepSpeed`, `phaseOffset`, `sweepAxis`
-  (set `sweepAxis` to `(1,0,0)` for a vertical sweep).
+- `LightBeam` on `Assets/PitTycoon/Art/Prefabs/LightBeam.prefab`: `sweepDegrees`, `sweepSpeed`,
+  `phaseOffset`, `sweepAxis` (set `sweepAxis` to `(1,0,0)` for a vertical sweep). Tune the prefab,
+  not the scene instances — `EnsureBeams` destroys and re-instantiates each scene beam on every
+  `Build Festival Scene` run, so per-instance edits are overwritten. The one exception is
+  `phaseOffset`, which the builder deliberately sets per beam to stagger the sweeps.
 - `ComicSky.mat`: `_GradientPower`, `_StarDensity`, `_MoonDir`, `_MoonSize`, `_MoonColor`.
 - `LightBeamMat.mat`: `_EdgeSoftness`, `_LengthFade`.
 - `OutlineMat.mat`: `_FadeStart`, `_FadeEnd` — the distance band over which outlines dissolve.

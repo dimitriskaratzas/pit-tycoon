@@ -167,8 +167,12 @@ namespace PitTycoon.Unity.EditorTools
             var aso = new SerializedObject(ctrl);
             SetRef(aso, "skyMaterial", skyMat);
             SetRef(aso, "sun", sun);
+            // Only rewrite when we actually found beams: re-running this builder alone destroys
+            // the MainStage rig (and the accent lights reparented onto it), so EnsureBeams can
+            // legitimately return empty. Clearing the array there would silently drop the beams
+            // with no obvious way back — the recovery is to re-run Apply Comic Look first.
             var arr = aso.FindProperty("beams");
-            if (arr != null)
+            if (arr != null && beams.Length > 0)
             {
                 arr.arraySize = beams.Length;
                 for (int i = 0; i < beams.Length; i++)
