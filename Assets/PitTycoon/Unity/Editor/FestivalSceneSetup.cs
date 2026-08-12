@@ -111,6 +111,7 @@ namespace PitTycoon.Unity.EditorTools
 
             WireBeatVfx(lit, stage);
             WireVenue(stage, paLeft, paRight);
+            WireAtmosphere(beams);
 
             var active = EditorSceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(active);
@@ -144,6 +145,43 @@ namespace PitTycoon.Unity.EditorTools
             {
                 var bso = new SerializedObject(boot);
                 SetRef(bso, "beatVfx", ctrl);
+                bso.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(boot);
+            }
+        }
+
+        private static void WireAtmosphere(LightBeam[] beams)
+        {
+            var systems = GameObject.Find("Systems");
+            if (systems == null) return;
+            var ctrl = systems.GetComponent<AtmosphereController>();
+            if (ctrl == null) ctrl = systems.AddComponent<AtmosphereController>();
+
+            var skyMat = AssetDatabase.LoadAssetAtPath<Material>($"{MatDir}/ComicSky.mat");
+            if (skyMat == null)
+                Debug.LogWarning("FestivalSceneSetup: ComicSky.mat missing — run Apply Comic Look (M2a) first.");
+
+            var sunGo = GameObject.Find("Directional Light");
+            var sun = sunGo != null ? sunGo.GetComponent<Light>() : null;
+
+            var aso = new SerializedObject(ctrl);
+            SetRef(aso, "skyMaterial", skyMat);
+            SetRef(aso, "sun", sun);
+            var arr = aso.FindProperty("beams");
+            if (arr != null)
+            {
+                arr.arraySize = beams.Length;
+                for (int i = 0; i < beams.Length; i++)
+                    arr.GetArrayElementAtIndex(i).objectReferenceValue = beams[i];
+            }
+            aso.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(ctrl);
+
+            var boot = Object.FindAnyObjectByType<GameBootstrap>();
+            if (boot != null)
+            {
+                var bso = new SerializedObject(boot);
+                SetRef(bso, "atmosphere", ctrl);
                 bso.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(boot);
             }
