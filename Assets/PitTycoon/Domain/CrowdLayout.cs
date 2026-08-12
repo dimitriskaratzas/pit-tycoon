@@ -121,6 +121,7 @@ namespace PitTycoon.Domain
         private static int PickIndex(int index, int count, int salt)
         {
             if (count <= 0) return 0;
+            if (index < 0) index = 0;   // match Slot's clamp so a member's slot and its outfit agree
             int picked = (int)(Hash01(index, salt) * count);
             return picked >= count ? count - 1 : picked;
         }

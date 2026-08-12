@@ -85,21 +85,41 @@ namespace PitTycoon.Domain.Tests
         }
 
         [Test]
-        public void Slot_NeighbouringIndicesDoNotShareJitter()
+        public void Slot_NeighbouringIndicesAreNotCorrelated()
         {
-            // Adjacent indices stand next to each other in the pit, so a weak hash shows up as
-            // visible diagonal banding. Neighbours must not land on the same offset.
+            // Adjacent indices stand next to each other in the pit, so a hash that mixes poorly
+            // reads as diagonal banding — one grid artefact traded for another. Exact-inequality
+            // is not enough to catch that: measure the actual correlation between neighbours.
             var s = Settings();
-            int identical = 0;
-            for (int i = 0; i < 200; i++)
+            const int n = 2000;
+            var a = new double[n];
+            var b = new double[n];
+            for (int i = 0; i < n; i++)
             {
-                var a = CrowdLayout.Slot(i, s);
-                var b = CrowdLayout.Slot(i + 1, s);
-                float aOff = a.X - (i % 12) * 1.2f;
-                float bOff = b.X - ((i + 1) % 12) * 1.2f;
-                if (System.Math.Abs(aOff - bOff) < 1e-6f) identical++;
+                a[i] = CrowdLayout.Slot(i, s).X - (i % 12) * 1.2f;
+                b[i] = CrowdLayout.Slot(i + 1, s).X - ((i + 1) % 12) * 1.2f;
             }
-            Assert.That(identical, Is.Zero);
+            Assert.That(System.Math.Abs(Pearson(a, b)), Is.LessThan(0.15));
+        }
+
+        private static double Pearson(double[] x, double[] y)
+        {
+            int n = x.Length;
+            double meanX = 0, meanY = 0;
+            for (int i = 0; i < n; i++) { meanX += x[i]; meanY += y[i]; }
+            meanX /= n;
+            meanY /= n;
+
+            double cov = 0, varX = 0, varY = 0;
+            for (int i = 0; i < n; i++)
+            {
+                double dx = x[i] - meanX;
+                double dy = y[i] - meanY;
+                cov += dx * dy;
+                varX += dx * dx;
+                varY += dy * dy;
+            }
+            return cov / System.Math.Sqrt(varX * varY);
         }
 
         [Test]
@@ -171,17 +191,21 @@ namespace PitTycoon.Domain.Tests
         }
 
         [Test]
-        public void OutfitIndex_StaysInRangeAndDiffersFromVariantChoice()
+        public void OutfitIndex_StaysInRangeAndMatchesVariantAtChanceRate()
         {
+            // count = 6, so two independently-hashed salts agreeing is chance-level, ~1/6. A
+            // correlated hash would push the match rate well above that. Band is deliberately
+            // wide (chance count is 600/6 = 100) so ordinary sampling noise never trips it —
+            // do not tighten it without re-checking against real sampling variance.
+            const int n = 600;
             int sameCount = 0;
-            for (int i = 0; i < 200; i++)
+            for (int i = 0; i < n; i++)
             {
                 int o = CrowdLayout.OutfitIndex(i, 6);
                 Assert.That(o, Is.InRange(0, 5));
                 if (o == CrowdLayout.VariantIndex(i, 6)) sameCount++;
             }
-            // Different salts: outfit and body must not be locked together across the pit.
-            Assert.That(sameCount, Is.LessThan(200));
+            Assert.That(sameCount, Is.InRange(50, 170));
         }
 
         [Test]
@@ -189,6 +213,41 @@ namespace PitTycoon.Domain.Tests
         {
             Assert.That(CrowdLayout.VariantIndex(5, 0), Is.Zero);
             Assert.That(CrowdLayout.OutfitIndex(5, 0), Is.Zero);
+        }
+
+        [Test]
+        public void Slot_NegativeIndex_ClampsToZeroInsteadOfThrowing()
+        {
+            var s = Settings();
+            var clamped = CrowdLayout.Slot(-5, s);
+            var zero = CrowdLayout.Slot(0, s);
+            Assert.That(clamped.X, Is.EqualTo(zero.X));
+            Assert.That(clamped.Z, Is.EqualTo(zero.Z));
+        }
+
+        [Test]
+        public void CrowdLayoutSettings_ColumnsBelowOne_ClampsToOneInsteadOfDividingByZero()
+        {
+            var s = new CrowdLayoutSettings(0, 1.2f, 7, 0.3f, 0.06f, 18f, 0.12f);
+            Assert.That(s.Columns, Is.EqualTo(1));
+            Assert.DoesNotThrow(() => CrowdLayout.Slot(3, s));
+            Assert.That(float.IsFinite(CrowdLayout.Slot(3, s).X), Is.True);
+        }
+
+        [Test]
+        public void Slot_StartRowsIsOne_DoesNotDivideByZeroComputingJitterRamp()
+        {
+            var s = new CrowdLayoutSettings(12, 1.2f, 1, 0.3f, 0.06f, 18f, 0.12f);
+            var slot = CrowdLayout.Slot(4, s);
+            Assert.That(float.IsFinite(slot.X), Is.True);
+            Assert.That(float.IsFinite(slot.Z), Is.True);
+        }
+
+        [Test]
+        public void VariantAndOutfitIndex_NegativeIndex_AgreesWithIndexZero()
+        {
+            Assert.That(CrowdLayout.VariantIndex(-1, 4), Is.EqualTo(CrowdLayout.VariantIndex(0, 4)));
+            Assert.That(CrowdLayout.OutfitIndex(-1, 4), Is.EqualTo(CrowdLayout.OutfitIndex(0, 4)));
         }
     }
 }
