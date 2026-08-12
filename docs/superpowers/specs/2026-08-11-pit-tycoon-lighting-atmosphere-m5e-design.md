@@ -76,7 +76,14 @@ Serialized: `dayCurve` (AnimationCurve), `setsToNight` (int, default 4), dusk an
 
 **Skybox material trap (called out because it bites first-time Unity devs):** writing to `RenderSettings.skybox`'s material at runtime mutates the **asset**, and the change persists after exiting Play mode — the scene's sky would be permanently left at whatever the last set looked like. `AtmosphereController` instantiates a runtime copy of the material in `Awake` (`new Material(skyMaterial)`) and assigns that to `RenderSettings.skybox`, so the asset is never touched.
 
-**`Assets/PitTycoon/Unity/LightBeam.cs`** — one per cone. Sweeps its transform on a sine (serialized arc degrees and base speed, per-beam phase offset so the three never sweep in unison), takes its color from the parent `Light` so beam and lit pool always agree, and writes `_Intensity` through a MaterialPropertyBlock (no material instancing).
+**`Assets/PitTycoon/Unity/LightBeam.cs`** — one per cone. Sweeps on a sine (serialized arc degrees and base speed, per-beam phase offset so the three never sweep in unison), takes its color from the parent `Light`, and writes `_Intensity` through a MaterialPropertyBlock (no material instancing).
+
+Two details make the rig read as one object rather than a cone and a lamp that happen to share a mount:
+
+- **It sweeps the `Light`, not the cone.** The cone is a child, so it follows — and the pool of light on the crowd travels with the shaft. Sweeping only the cone leaves the pool sitting still while the shaft slides off it, which reads as broken. `sweepAxis` is therefore expressed in the light's local space.
+- **Beam brightness scales by the owning light's intensity ratio**, captured at `Awake` before any upgrade applies. `VenueController` raises accent intensity per Lighting-upgrade level, so the purchase now shows on the brightest element in the frame instead of only on the ground. This is a *read* of `Light.intensity`, not a write — `VenueController` remains its sole writer, and the beam's own `_Intensity` still has exactly one writer in `LightBeam`.
+
+The accents were authored at intensity `3.5` before this milestone and `8` after, which left `VenueController.lightStep` at `0.6` changing brightness only ~7.5% per level. It is raised to `2` so the upgrade stays legible.
 
 `GameBootstrap` wires `AtmosphereController` the same way it wires `BeatVfxController`, and treats it as optional so scenes that have not been re-run through the builders keep running.
 

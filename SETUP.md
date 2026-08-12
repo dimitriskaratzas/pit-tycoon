@@ -401,8 +401,10 @@ features from M2a must already be on `PC_Renderer.asset` (unchanged by this mile
 - Set 1 reads as dusk. Each set start darkens the sky over ~2 seconds; stars fade in; by set 5
   (with the default `setsToNight = 4`) it is full night.
 - Beams are visible from the default camera and from inside, and brighten + sweep faster as
-  hype climbs.
-- The Lighting upgrade still brightens the accent lights permanently.
+  hype climbs. The lit pool on the crowd sweeps *with* the shaft — `LightBeam` rotates the rig
+  light itself, not just its cone.
+- The Lighting upgrade still brightens the accent lights permanently, and the beams brighten
+  with them (`LightBeam` scales its `_Intensity` by the light's intensity ratio).
 - After exiting Play mode, `ComicSky.mat` still holds its dusk values (the controller edits a
   runtime copy, never the asset).
 
@@ -412,12 +414,16 @@ features from M2a must already be on `PC_Renderer.asset` (unchanged by this mile
   dusk/night colour and intensity pair. All live in Play mode.
 - `beamIntensityLow/High` and `beamSweepLow/High` — the hype response.
 - `LightBeam` on `Assets/PitTycoon/Art/Prefabs/LightBeam.prefab`: `sweepDegrees`, `sweepSpeed`,
-  `phaseOffset`, `sweepAxis` (set `sweepAxis` to `(1,0,0)` for a vertical sweep). Tune the prefab,
+  `phaseOffset`, `sweepAxis`. `sweepAxis` is in the **rig light's** local space, since the light
+  is what swings: `(0,1,0)` yaws the beam across the pit, `(1,0,0)` nods it up and down. Tune the prefab,
   not the scene instances — `EnsureBeams` destroys and re-instantiates each scene beam on every
   `Build Festival Scene` run, so per-instance edits are overwritten. The one exception is
   `phaseOffset`, which the builder deliberately sets per beam to stagger the sweeps.
 - `ComicSky.mat`: `_GradientPower`, `_StarDensity`, `_MoonDir`, `_MoonSize`, `_MoonColor`.
 - `LightBeamMat.mat`: `_EdgeSoftness`, `_LengthFade`.
 - `OutlineMat.mat`: `_FadeStart`, `_FadeEnd` — the distance band over which outlines dissolve.
+- `VenueController.lightStep` on `Systems` — how much each Lighting-upgrade level adds to accent
+  intensity. Raised to `2` for M5e: the accents were authored at `3.5` before this milestone and
+  at `8` after, so the old `0.6` step had become a ~7.5% change per level and read as nothing.
 - `ComicLook.asset` volume profile: bloom, colour grading, and vignette will likely want
   re-balancing now that the scene is darker and the beams are additive.

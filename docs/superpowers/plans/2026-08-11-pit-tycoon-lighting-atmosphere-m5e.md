@@ -529,14 +529,18 @@ namespace PitTycoon.Unity
         [SerializeField] private float sweepSpeed = 0.25f;
         [Tooltip("Offset into the sweep cycle (0..1) so beams never move in unison.")]
         [SerializeField] private float phaseOffset;
-        [Tooltip("Local axis the cone swings about. Flip to (1,0,0) for a vertical sweep.")]
-        [SerializeField] private Vector3 sweepAxis = new Vector3(0f, 0f, 1f);
+        [Tooltip("Axis the rig light swings about, in its own local space. Y yaws the beam across " +
+                 "the pit; flip to (1,0,0) to nod it up and down instead.")]
+        [SerializeField] private Vector3 sweepAxis = new Vector3(0f, 1f, 0f);
 
         private static readonly int ColorProp = Shader.PropertyToID("_Color");
         private static readonly int IntensityProp = Shader.PropertyToID("_Intensity");
 
         private Renderer _renderer;
         private MaterialPropertyBlock _mpb;
+        private Transform _sweepTarget;
+        private Light _owner;
+        private float _baseLightIntensity = 1f;
         private Quaternion _baseRotation;
         private float _intensity = 1f;
         private float _speedScale = 1f;
@@ -545,25 +549,30 @@ namespace PitTycoon.Unity
         /// <summary>Sweep rate multiplier; 1 is the serialized base speed.</summary>
         public void SetSweepScale(float scale) => _speedScale = Mathf.Max(0f, scale);
 
-        /// <summary>Beam brightness, 0 = invisible.</summary>
-        public void SetIntensity(float intensity)
-        {
-            _intensity = Mathf.Max(0f, intensity);
-            Apply();
-        }
+        /// <summary>Beam brightness before the owning Light's own intensity is applied.</summary>
+        public void SetIntensity(float intensity) => _intensity = Mathf.Max(0f, intensity);
 
         private void Awake()
         {
             _renderer = GetComponent<Renderer>();
             // NOTE: this block is authoritative and is never re-read from the renderer.
             // Renderer.GetPropertyBlock(mpb) OVERWRITES mpb with the renderer's current block,
-            // which would silently wipe the colour set below on the first SetIntensity call.
+            // which would silently wipe the colour set below on the first Apply call.
             _mpb = new MaterialPropertyBlock();
 
-            var owner = GetComponentInParent<Light>();
-            if (owner != null) _mpb.SetColor(ColorProp, owner.color);
+            _owner = GetComponentInParent<Light>();
+            if (_owner != null)
+            {
+                _mpb.SetColor(ColorProp, _owner.color);
+                // Captured before any upgrade is applied, so the ratio below reads 1 at level 0.
+                _baseLightIntensity = Mathf.Max(0.0001f, _owner.intensity);
+            }
 
-            _baseRotation = transform.localRotation;
+            // Sweep the LIGHT, not just the cone. The cone is a child, so it follows — and the
+            // pool of light on the crowd travels with the shaft instead of sitting still while
+            // the shaft slides off it.
+            _sweepTarget = _owner != null ? _owner.transform : transform;
+            _baseRotation = _sweepTarget.localRotation;
             Apply();
         }
 
@@ -574,13 +583,19 @@ namespace PitTycoon.Unity
             // argument by Time.time * delta-scale each time it changes — the cone would strobe.
             _sweepPhase += Time.deltaTime * sweepSpeed * _speedScale;
             float angle = Mathf.Sin((_sweepPhase + phaseOffset) * Mathf.PI * 2f) * sweepDegrees;
-            transform.localRotation = _baseRotation * Quaternion.AngleAxis(angle, sweepAxis);
+            _sweepTarget.localRotation = _baseRotation * Quaternion.AngleAxis(angle, sweepAxis);
+
+            Apply();
         }
 
         private void Apply()
         {
             if (_renderer == null) return;
-            _mpb.SetFloat(IntensityProp, _intensity);
+            // VenueController raises the Light's intensity per Lighting-upgrade level; the beam
+            // tracks that ratio so the purchase is visible on the shaft, not only on the ground.
+            // Read every frame rather than on purchase: nothing notifies us, and it is one float.
+            float lightScale = _owner != null ? _owner.intensity / _baseLightIntensity : 1f;
+            _mpb.SetFloat(IntensityProp, _intensity * lightScale);
             _renderer.SetPropertyBlock(_mpb);
         }
     }
@@ -786,7 +801,7 @@ Expected: `Passed! - Failed: 0, Passed: 98`
 4. Confirm the *lit pools* land on the crowd too, not just the cones — that is the Step 5 re-aim working. If the pools sit behind or beside the pit, the rotation fix did not take.
 5. Press Play. The cones should sweep slowly and out of phase with each other.
 6. Fly the free-look camera through a cone. It must stay visible from inside (`Cull Off`) rather than vanishing.
-7. If a cone sweeps up-and-down instead of side-to-side, set `sweepAxis` to `(1,0,0)` on the prefab — the axis is exposed for exactly this.
+7. Confirm the lit pool on the crowd sweeps *with* the shaft — `LightBeam` rotates the rig light itself, so both move together. If the sweep reads wrong (nodding up-and-down rather than yawing across the pit), set `sweepAxis` to `(1,0,0)` on the prefab; the axis is in the light's local space and is exposed for exactly this.
 
 - [ ] **Step 8: Commit**
 
