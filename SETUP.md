@@ -377,3 +377,44 @@ VenueController stageStep/paStep (existing).
 
 **M5c hook contract:** child names `Deck`, `RoofTruss`, `Backwall`, `PAWingL/R`, `SubStackL/R`,
 `BannerCloth` are load-bearing for beat-reactivity — don't rename.
+
+## M5e — Lighting & Atmosphere
+
+Turns the venue into a night festival: gradient sky with stars and a moon, working fog,
+spot-lit accents, and sweeping light-beam cones that respond to hype.
+
+### Build steps
+
+1. `Pit Tycoon → Apply Comic Look (M2a)` — creates `ComicSky.mat`, assigns it as the skybox,
+   switches the camera to Skybox clear, enables exponential-squared fog, converts the three
+   accent lights to aimed spots, and dims the directional light to a cool fill.
+2. `Pit Tycoon → Build Festival Scene (M2b)` — generates `BeamCone.asset` and
+   `LightBeam.prefab`, hangs one beam under each accent light, and adds + wires
+   `AtmosphereController` on `Systems`.
+
+No manual Editor steps beyond running the two menu items. The Halftone/Outline render
+features from M2a must already be on `PC_Renderer.asset` (unchanged by this milestone).
+
+### Verification
+
+- Distant crowd and structures wash toward the fog colour; their outlines weaken with distance.
+- Set 1 reads as dusk. Each set start darkens the sky over ~2 seconds; stars fade in; by set 5
+  (with the default `setsToNight = 4`) it is full night.
+- Beams are visible from the default camera and from inside, and brighten + sweep faster as
+  hype climbs.
+- The Lighting upgrade still brightens the accent lights permanently.
+- After exiting Play mode, `ComicSky.mat` still holds its dusk values (the controller edits a
+  runtime copy, never the asset).
+
+### Tuning knobs
+
+- `AtmosphereController` on `Systems`: `dayCurve`, `setsToNight`, `transitionSeconds`, and every
+  dusk/night colour and intensity pair. All live in Play mode.
+- `beamIntensityLow/High` and `beamSweepLow/High` — the hype response.
+- `LightBeam` on each beam: `sweepDegrees`, `sweepSpeed`, `phaseOffset`, `sweepAxis`
+  (set `sweepAxis` to `(1,0,0)` for a vertical sweep).
+- `ComicSky.mat`: `_GradientPower`, `_StarDensity`, `_MoonDir`, `_MoonSize`, `_MoonColor`.
+- `LightBeamMat.mat`: `_EdgeSoftness`, `_LengthFade`.
+- `OutlineMat.mat`: `_FadeStart`, `_FadeEnd` — the distance band over which outlines dissolve.
+- `ComicLook.asset` volume profile: bloom, colour grading, and vignette will likely want
+  re-balancing now that the scene is darker and the beams are additive.
