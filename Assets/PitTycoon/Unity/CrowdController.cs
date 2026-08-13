@@ -43,6 +43,8 @@ namespace PitTycoon.Unity
         [SerializeField] private float rowSpacingFalloff = 0.06f;
         [Tooltip("Seconds of delay per row, so the pop travels back from the stage. 0 = every row pops at once (the pre-M5f behaviour).")]
         [SerializeField] private float waveRowDelay = 0.035f;
+        [Tooltip("Rows past this all pop together with the last delayed row, so a big pit never lags the music.")]
+        [SerializeField] private int waveMaxRows = 8;
         [Tooltip("Translucent material for ghost-preview members (wired by Build Upgrade Preview).")]
         [SerializeField] private Material ghostMaterial;
 
@@ -56,8 +58,6 @@ namespace PitTycoon.Unity
         private float[] _curScale;    // per-member 0..1 scale-in progress
         private float _beatTime = -999f;   // Time.time of the beat that started the current wave
         private float _beatStrength;
-        private float _prevBeatTime = -999f;
-        private float _prevBeatStrength;
         private bool _live;
         private readonly System.Collections.Generic.List<GameObject> _ghosts =
             new System.Collections.Generic.List<GameObject>();
@@ -67,6 +67,7 @@ namespace PitTycoon.Unity
         private static readonly int DanceState = Animator.StringToHash("Dance");
         private static readonly int BaseColorProp = Shader.PropertyToID("_BaseColor");
         private float[] _popJitter;  // per-member beat-pop height factor, so hops aren't a unison wave
+        private float[] _popHeight;  // per-member current pop height, decays and is re-raised by the wave
 
         /// <summary>ICrowdMeter: how full the pit is, 0..1.</summary>
         public float FillFraction => _fill?.FillFraction ?? 0f;
@@ -120,18 +121,11 @@ namespace PitTycoon.Unity
             TriggerWave(strength);
         }
 
-        /// <summary>Start a new pop wave at the barrier, keeping the in-flight one alive beside it.
-        /// Replacing it outright would reset secondsSinceBeat to 0, which makes PopHeight return 0
-        /// for every row the old wave had already reached — their arrival is back in the future —
-        /// so the whole pit would snap to the ground on each retrigger and then re-rise.</summary>
+        /// <summary>Start a new pop wave at the barrier. Members already lifted by an earlier wave
+        /// keep decaying from where they are until this one reaches them, so a retrigger never
+        /// drops anyone to the ground — see the decaying-max in Update.</summary>
         private void TriggerWave(float strength)
         {
-            // Two deep on purpose: a third trigger discards the oldest wave. That only matters if
-            // three land inside roughly one wave's lifetime (~strength/popDecayPerSecond seconds),
-            // faster than normal beat cadence, and the worst case is a small dip toward the
-            // second-newest wave — never the snap to zero that one slot produced.
-            _prevBeatTime = _beatTime;
-            _prevBeatStrength = _beatStrength;
             _beatTime = Time.time;
             _beatStrength = strength;
         }
@@ -148,6 +142,7 @@ namespace PitTycoon.Unity
         /// scale, the rest hidden at scale 0 (no flicker on rebuild).</summary>
         public void Build()
         {
+            int cols = Mathf.Max(1, columns);
             ClearPreview();
             if (_fill == null) _fill = new CrowdFill(startingCapacity, startingFollowing);
 
@@ -161,6 +156,7 @@ namespace PitTycoon.Unity
             _curScale = new float[n];
             _animators = new Animator[n];
             _popJitter = new float[n];
+            _popHeight = new float[n];
 
             var layout = LayoutSettings();
 
@@ -171,7 +167,7 @@ namespace PitTycoon.Unity
                 GameObject go = SpawnMember(i);
                 _animators[i] = StyleMember(go, i);
 
-                go.name = $"Crowd_{i / columns}_{i % columns}";
+                go.name = $"Crowd_{i / cols}_{i % cols}";
                 go.transform.SetParent(transform, false);
                 go.transform.localPosition = new Vector3(slot.X, 0f, slot.Z);
                 go.transform.localRotation = Quaternion.Euler(0f, slot.RotationY, 0f);
@@ -194,6 +190,7 @@ namespace PitTycoon.Unity
 
             int from = _fill.Capacity;
             int to = from + delta;
+            int cols = Mathf.Max(1, columns);
 
             var layout = LayoutSettings();
 
@@ -204,7 +201,7 @@ namespace PitTycoon.Unity
                 GameObject go = SpawnMember(i);
                 var ghostAnim = go.GetComponentInChildren<Animator>();
                 if (ghostAnim != null) Destroy(ghostAnim);
-                go.name = $"GhostCrowd_{i / columns}_{i % columns}";
+                go.name = $"GhostCrowd_{i / cols}_{i % cols}";
                 foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
                 if (ghostMaterial != null)
                     foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = ghostMaterial;
@@ -232,6 +229,14 @@ namespace PitTycoon.Unity
             int startRows = Mathf.CeilToInt((float)startingCapacity / Mathf.Max(1, columns));
             return new CrowdLayoutSettings(columns, spacing, startRows,
                 positionJitter, rowSpacingFalloff, rotationJitter, scaleJitter);
+        }
+
+        /// <summary>The row index the wave uses for a member: the real row, capped, so traverse time
+        /// stays bounded as capacity grows instead of the back of the pit popping a beat late.</summary>
+        private int WaveRow(int index)
+        {
+            int row = index / Mathf.Max(1, columns);
+            return row > waveMaxRows ? waveMaxRows : row;
         }
 
         /// <summary>Instantiate this member's body variant, or the capsule fallback when none are
@@ -290,7 +295,7 @@ namespace PitTycoon.Unity
             float energy = _hype != null ? _hype.HypeFraction : _analyzer.Intensity01;
 
             float sinceBeat = Time.time - _beatTime;
-            float sincePrevBeat = Time.time - _prevBeatTime;
+            float decayStep = popDecayPerSecond * Time.deltaTime;
             for (int i = 0; i < _members.Length; i++)
             {
                 Transform tr = _members[i];
@@ -304,14 +309,16 @@ namespace PitTycoon.Unity
                 bool visible = _curScale[i] > 0.05f;
                 Vector3 p = tr.localPosition;
                 float jitter = _popJitter != null && i < _popJitter.Length ? _popJitter[i] : 1f;
-                // Row-delayed: the pop rolls back through the pit from the stage rather than
-                // firing on every member in the same frame. Clips own body motion; lifts the root.
-                float wave = CrowdLayout.PopHeight(i / columns, sinceBeat, _beatStrength,
+                // Decaying max: each member falls at popDecayPerSecond and is re-raised when the
+                // wave reaches its row. A new beat therefore cannot drop anyone — rows the wave
+                // has not reached yet simply keep falling from where they were. This carries any
+                // number of overlapping waves with one slot of wave state.
+                float incoming = CrowdLayout.PopHeight(WaveRow(i), sinceBeat, _beatStrength,
                     waveRowDelay, popDecayPerSecond);
-                float prevWave = CrowdLayout.PopHeight(i / columns, sincePrevBeat, _prevBeatStrength,
-                    waveRowDelay, popDecayPerSecond);
-                if (prevWave > wave) wave = prevWave;
-                p.y = visible ? wave * jitter : 0f;
+                float decayed = _popHeight[i] - decayStep;
+                if (decayed < 0f) decayed = 0f;
+                _popHeight[i] = incoming > decayed ? incoming : decayed;
+                p.y = visible ? _popHeight[i] * jitter : 0f;
                 tr.localPosition = p;
 
                 var anim = _animators != null && i < _animators.Length ? _animators[i] : null;

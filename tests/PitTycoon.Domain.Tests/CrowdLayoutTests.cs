@@ -57,6 +57,35 @@ namespace PitTycoon.Domain.Tests
         }
 
         [Test]
+        public void Slot_ZFollowsRowDepthBackFromTheStage()
+        {
+            // Pins depth, direction, and the Z jitter bound together. Without this a sign flip on
+            // the RowDepth term passes the whole suite while putting the crowd behind the stage.
+            var s = Settings();
+            float frontZ = (7 - 1) * 1.2f * 0.5f;
+            for (int i = 0; i < 400; i++)
+            {
+                float gridZ = frontZ - CrowdLayout.RowDepth(i / 12, 1.2f, 0.06f);
+                Assert.That(System.Math.Abs(CrowdLayout.Slot(i, s).Z - gridZ),
+                    Is.LessThanOrEqualTo(0.3f * 1.2f + 1e-4f));
+            }
+        }
+
+        [Test]
+        public void Slot_BothKnobsZero_ReproducesTheUniformLattice()
+        {
+            var s = new CrowdLayoutSettings(12, 1.2f, 7, 0f, 0f, 0f, 0f);
+            float offsetX = (12 - 1) * 1.2f * 0.5f;
+            float frontZ = (7 - 1) * 1.2f * 0.5f;
+            for (int i = 0; i < 200; i++)
+            {
+                var slot = CrowdLayout.Slot(i, s);
+                Assert.That(slot.X, Is.EqualTo((i % 12) * 1.2f - offsetX).Within(1e-4f));
+                Assert.That(slot.Z, Is.EqualTo(frontZ - (i / 12) * 1.2f).Within(1e-4f));
+            }
+        }
+
+        [Test]
         public void Slot_BackRowsScatterMoreThanTheFrontRow()
         {
             var s = Settings();

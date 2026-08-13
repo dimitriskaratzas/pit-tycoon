@@ -587,22 +587,29 @@ git commit -m "feat: derive crowd placement from member index instead of random 
 - Consumes: `CrowdLayout.PopHeight(int, float, float, float, float)` from Task 1; the `_popJitter` array populated in Task 2.
 - Produces: nothing consumed by later tasks — this is the closing task.
 
-- [ ] **Step 1: Replace the single pop value with a beat timestamp**
+- [ ] **Step 1: Replace the single pop value with a beat timestamp and a per-member height**
 
-In `CrowdController.cs`, add the wave knob after the `rowSpacingFalloff` field added in Task 2:
+In `CrowdController.cs`, add the wave knobs after the `rowSpacingFalloff` field added in Task 2:
 
 ```csharp
         [Tooltip("Seconds of delay per row, so the pop travels back from the stage. 0 = every row pops at once (the pre-M5f behaviour).")]
         [SerializeField] private float waveRowDelay = 0.035f;
+        [Tooltip("Rows past this all pop together with the last delayed row, so a big pit never lags the music.")]
+        [SerializeField] private int waveMaxRows = 8;
 ```
 
-Replace the `private float _pop;` field with:
+Replace the `private float _pop;` field with one wave slot:
 
 ```csharp
         private float _beatTime = -999f;   // Time.time of the beat that started the current wave
         private float _beatStrength;
-        private float _prevBeatTime = -999f;
-        private float _prevBeatStrength;
+```
+
+and add a per-member height array beside `_popJitter`, sized alongside it in `Build()` — this is what
+carries an in-flight wave per member, so one wave slot is enough no matter how fast beats retrigger it:
+
+```csharp
+        private float[] _popHeight;  // per-member current pop height, decays and is re-raised by the wave
 ```
 
 - [ ] **Step 2: Retrigger the wave from beats and abilities**
@@ -621,14 +628,11 @@ Replace `OnBeat` and `Pop` with:
             TriggerWave(strength);
         }
 
-        /// <summary>Start a new pop wave at the barrier, keeping the in-flight one alive beside it.
-        /// Replacing it outright would reset secondsSinceBeat to 0, which makes PopHeight return 0
-        /// for every row the old wave had already reached — their arrival is back in the future —
-        /// so the whole pit would snap to the ground on each retrigger and then re-rise.</summary>
+        /// <summary>Start a new pop wave at the barrier. Members already lifted by an earlier wave
+        /// keep decaying from where they are until this one reaches them, so a retrigger never
+        /// drops anyone to the ground — see the decaying-max in Update.</summary>
         private void TriggerWave(float strength)
         {
-            _prevBeatTime = _beatTime;
-            _prevBeatStrength = _beatStrength;
             _beatTime = Time.time;
             _beatStrength = strength;
         }
@@ -646,7 +650,19 @@ Add this immediately before the `for` loop over members:
 
 ```csharp
             float sinceBeat = Time.time - _beatTime;
-            float sincePrevBeat = Time.time - _prevBeatTime;
+            float decayStep = popDecayPerSecond * Time.deltaTime;
+```
+
+Add a `WaveRow(int index)` helper next to `LayoutSettings()` that caps the row the wave uses at
+`waveMaxRows`, so traverse time stays bounded as capacity grows instead of the back of a big pit
+popping a beat late:
+
+```csharp
+        private int WaveRow(int index)
+        {
+            int row = index / Mathf.Max(1, columns);
+            return row > waveMaxRows ? waveMaxRows : row;
+        }
 ```
 
 Then replace the three lines inside the loop that compute the member's Y:
@@ -659,20 +675,19 @@ Then replace the three lines inside the loop that compute the member's Y:
                 tr.localPosition = p;
 ```
 
-with:
+with a per-member decaying max — each member falls at `popDecayPerSecond` and is re-raised whenever
+the wave reaches its row, so no beat retrigger rate can drop a member to the ground between waves:
 
 ```csharp
                 bool visible = _curScale[i] > 0.05f;
                 Vector3 p = tr.localPosition;
                 float jitter = _popJitter != null && i < _popJitter.Length ? _popJitter[i] : 1f;
-                // Row-delayed: the pop rolls back through the pit from the stage rather than
-                // firing on every member in the same frame. Clips own body motion; lifts the root.
-                float wave = CrowdLayout.PopHeight(i / columns, sinceBeat, _beatStrength,
+                float incoming = CrowdLayout.PopHeight(WaveRow(i), sinceBeat, _beatStrength,
                     waveRowDelay, popDecayPerSecond);
-                float prevWave = CrowdLayout.PopHeight(i / columns, sincePrevBeat, _prevBeatStrength,
-                    waveRowDelay, popDecayPerSecond);
-                if (prevWave > wave) wave = prevWave;
-                p.y = visible ? wave * jitter : 0f;
+                float decayed = _popHeight[i] - decayStep;
+                if (decayed < 0f) decayed = 0f;
+                _popHeight[i] = incoming > decayed ? incoming : decayed;
+                p.y = visible ? _popHeight[i] * jitter : 0f;
                 tr.localPosition = p;
 ```
 

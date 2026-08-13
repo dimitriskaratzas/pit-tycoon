@@ -93,8 +93,8 @@ Front rows lift first and the pop rolls backward through the pit. Linear decay m
 
 - `Build()` and `PreviewCapacity()` both call `CrowdLayout.Slot`. The duplicated layout maths in `PreviewCapacity` is deleted — one source of truth.
 - Per-member `Random.Range` calls for rotation, scale, and pop jitter are replaced by the values on `CrowdSlot`.
-- The single `_pop` float becomes a beat **timestamp** plus strength. Per member, height comes from `CrowdLayout.PopHeight` using that member's row. `Pop(float strength)` (the ability jolt) triggers the same wave, so abilities also read as a pulse travelling through the pit.
-- New serialized knobs: `positionJitter`, `rowSpacingFalloff`, `waveRowDelay`. The wave's `decay` argument is the **existing** `popDecayPerSecond` field, which already means exactly that — a second decay knob would be the same number under two names.
+- The single `_pop` float becomes one wave slot — a beat **timestamp** plus strength — and a per-member height that decays every frame and is re-raised once `CrowdLayout.PopHeight` says the wave has reached that member's row (row capped at `waveMaxRows`, so traverse time stays bounded as capacity grows). One slot is enough regardless of retrigger rate: members the newer wave hasn't reached yet just keep decaying from where they were. `Pop(float strength)` (the ability jolt) triggers the same wave, so abilities also read as a pulse travelling through the pit.
+- New serialized knobs: `positionJitter`, `rowSpacingFalloff`, `waveRowDelay`, `waveMaxRows`. The wave's `decay` argument is the **existing** `popDecayPerSecond` field, which already means exactly that — a second decay knob would be the same number under two names.
 - Existing `spacing`, `columns`, `rotationJitter`, `scaleJitter`, `beatPop`, and `popDecayPerSecond` keep their current meanings.
 
 `FillFraction` / `ICrowdMeter`, the fill and scale-in logic, the Animator blend tree, and the hype maths are untouched.

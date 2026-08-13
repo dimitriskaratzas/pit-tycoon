@@ -94,6 +94,9 @@ namespace PitTycoon.Domain
 
         /// <summary>Cumulative depth of a row from the front. The gap between consecutive rows
         /// is spacing * (1 + falloff * r), so the sum has a closed form and needs no loop.</summary>
+        // ponytail: quadratic depth halves the row headroom before the pit overruns the 120m ground
+        // plane (~row 28 at the default falloff, vs ~50 uniform). Clamp the falloff term past N rows
+        // if capacity ever grows that far.
         public static float RowDepth(int row, float spacing, float falloff)
         {
             if (row <= 0) return 0f;

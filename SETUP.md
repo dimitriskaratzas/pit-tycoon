@@ -460,8 +460,10 @@ All on `CrowdController` in the scene, live in Play mode:
 - `rowSpacingFalloff` — how much wider each row's gap gets further from the stage. 0 = uniform.
 - `waveRowDelay` — seconds of delay per row. Higher travels slower and reads more like a wave;
   0 fires the whole pit at once.
+- `waveMaxRows` — rows past this pop together with the last delayed row, so a large pit never
+  lags the music.
 - Existing: `spacing`, `columns`, `rotationJitter`, `scaleJitter`, `beatPop`, and
-  `popDecayPerSecond` (which also sets how fast the wave decays as it travels).
+  `popDecayPerSecond` (how fast the pop fades once the wave reaches a row).
 
 Placement is derived from each member's index, not drawn randomly, so the crowd is stable
 across rebuilds and ghost previews match what you get. Changing `columns`, `spacing`,
