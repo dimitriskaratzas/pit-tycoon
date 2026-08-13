@@ -37,6 +37,10 @@ namespace PitTycoon.Unity
         };
         [SerializeField] private float rotationJitter = 18f;
         [SerializeField] private float scaleJitter = 0.12f;
+        [Tooltip("Per-member scatter off the grid, as a fraction of spacing. 0 = the old rigid lattice.")]
+        [SerializeField] private float positionJitter = 0.3f;
+        [Tooltip("How much wider each row's gap gets further from the stage. 0 = uniform rows.")]
+        [SerializeField] private float rowSpacingFalloff = 0.06f;
         [Tooltip("Translucent material for ghost-preview members (wired by Build Upgrade Preview).")]
         [SerializeField] private Material ghostMaterial;
 
@@ -137,31 +141,25 @@ namespace PitTycoon.Unity
             _animators = new Animator[n];
             _popJitter = new float[n];
 
-            int startRows = Mathf.CeilToInt((float)startingCapacity / columns);
-            float frontZ = (startRows - 1) * spacing * 0.5f;   // front row fixed near the stage
-            float offsetX = (columns - 1) * spacing * 0.5f;
+            var layout = LayoutSettings();
 
             for (int i = 0; i < n; i++)
             {
-                int row = i / columns;                          // row 0 = front (near stage)
-                int col = i % columns;
+                var slot = CrowdLayout.Slot(i, layout);
 
-                GameObject go = SpawnMember();
-                _animators[i] = StyleMember(go);
+                GameObject go = SpawnMember(i);
+                _animators[i] = StyleMember(go, i);
 
-                go.name = $"Crowd_{row}_{col}";
+                go.name = $"Crowd_{i / columns}_{i % columns}";
                 go.transform.SetParent(transform, false);
-                go.transform.localPosition = new Vector3(
-                    col * spacing - offsetX, 0f, frontZ - row * spacing);
-                go.transform.localRotation = Quaternion.Euler(
-                    0f, Random.Range(-rotationJitter, rotationJitter), 0f);
+                go.transform.localPosition = new Vector3(slot.X, 0f, slot.Z);
+                go.transform.localRotation = Quaternion.Euler(0f, slot.RotationY, 0f);
 
-                _popJitter[i] = Random.Range(0.55f, 1.2f);
-                float full = 1f + Random.Range(-scaleJitter, scaleJitter);
+                _popJitter[i] = slot.PopScale;
                 float cur = (i < active) ? 1f : 0f;             // active members appear immediately
-                _fullScale[i] = full;
+                _fullScale[i] = slot.Scale;
                 _curScale[i] = cur;
-                go.transform.localScale = Vector3.one * (full * cur);
+                go.transform.localScale = Vector3.one * (slot.Scale * cur);
                 _members[i] = go.transform;
             }
         }
@@ -176,26 +174,24 @@ namespace PitTycoon.Unity
             int from = _fill.Capacity;
             int to = from + delta;
 
-            int startRows = Mathf.CeilToInt((float)startingCapacity / columns);
-            float frontZ = (startRows - 1) * spacing * 0.5f;
-            float offsetX = (columns - 1) * spacing * 0.5f;
+            var layout = LayoutSettings();
 
             for (int i = from; i < to; i++)
             {
-                int row = i / columns;
-                int col = i % columns;
+                var slot = CrowdLayout.Slot(i, layout);
 
-                GameObject go = SpawnMember();
+                GameObject go = SpawnMember(i);
                 var ghostAnim = go.GetComponentInChildren<Animator>();
                 if (ghostAnim != null) Destroy(ghostAnim);
-                go.name = $"GhostCrowd_{row}_{col}";
+                go.name = $"GhostCrowd_{i / columns}_{i % columns}";
                 foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
                 if (ghostMaterial != null)
                     foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = ghostMaterial;
 
                 go.transform.SetParent(transform, false);
-                go.transform.localPosition = new Vector3(col * spacing - offsetX, 0f, frontZ - row * spacing);
-                go.transform.localScale = Vector3.one;
+                go.transform.localPosition = new Vector3(slot.X, 0f, slot.Z);
+                go.transform.localRotation = Quaternion.Euler(0f, slot.RotationY, 0f);
+                go.transform.localScale = Vector3.one * slot.Scale;
                 _ghosts.Add(go);
             }
         }
@@ -208,12 +204,22 @@ namespace PitTycoon.Unity
             _ghosts.Clear();
         }
 
-        /// <summary>Instantiate a random body variant, or the capsule fallback when none are wired.</summary>
-        private GameObject SpawnMember()
+        /// <summary>Layout parameters for CrowdLayout. Shared by Build and PreviewCapacity so a
+        /// ghost lands exactly where its real member will.</summary>
+        private CrowdLayoutSettings LayoutSettings()
+        {
+            int startRows = Mathf.CeilToInt((float)startingCapacity / Mathf.Max(1, columns));
+            return new CrowdLayoutSettings(columns, spacing, startRows,
+                positionJitter, rowSpacingFalloff, rotationJitter, scaleJitter);
+        }
+
+        /// <summary>Instantiate this member's body variant, or the capsule fallback when none are
+        /// wired. The variant is index-derived, so a rebuild does not re-roll everyone's body.</summary>
+        private GameObject SpawnMember(int index)
         {
             if (memberPrefabs != null && memberPrefabs.Length > 0)
             {
-                var prefab = memberPrefabs[Random.Range(0, memberPrefabs.Length)];
+                var prefab = memberPrefabs[CrowdLayout.VariantIndex(index, memberPrefabs.Length)];
                 if (prefab != null) return Instantiate(prefab);
             }
             var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -225,13 +231,15 @@ namespace PitTycoon.Unity
             return go;
         }
 
-        /// <summary>Random outfit tint + desynced animator start (offset + speed jitter).</summary>
-        private Animator StyleMember(GameObject go)
+        /// <summary>Index-derived outfit tint (stable across rebuilds) plus a desynced animator
+        /// start. The animator offset stays random on purpose: its phase drifts anyway, so
+        /// re-rolling it on a rebuild is invisible.</summary>
+        private Animator StyleMember(GameObject go, int index)
         {
             if (outfitPalette != null && outfitPalette.Length > 0)
             {
                 var mpb = new MaterialPropertyBlock();
-                mpb.SetColor(BaseColorProp, outfitPalette[Random.Range(0, outfitPalette.Length)]);
+                mpb.SetColor(BaseColorProp, outfitPalette[CrowdLayout.OutfitIndex(index, outfitPalette.Length)]);
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(mpb);
             }
             var anim = go.GetComponentInChildren<Animator>();
