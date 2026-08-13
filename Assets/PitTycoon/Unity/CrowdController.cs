@@ -23,9 +23,9 @@ namespace PitTycoon.Unity
         [Tooltip("How fast a member pops in/out as the pit fills (scale units/sec).")]
         [SerializeField] private float scaleInPerSecond = 3f;
         [SerializeField] private Material memberMaterial;
-        [Tooltip("Rigged body-variant prefabs (M5a). Each member picks one at random. Empty = capsule fallback.")]
+        [Tooltip("Rigged body-variant prefabs (M5a). Picked per member by index, stable across rebuilds. Empty = capsule fallback.")]
         [SerializeField] private GameObject[] memberPrefabs;
-        [Tooltip("Outfit tints assigned per member at random (MaterialPropertyBlock on _BaseColor).")]
+        [Tooltip("Outfit tints assigned per member by index, stable across rebuilds (MaterialPropertyBlock on _BaseColor).")]
         [SerializeField] private Color[] outfitPalette =
         {
             new Color(0.86f, 0.32f, 0.25f),   // red jacket
@@ -37,6 +37,14 @@ namespace PitTycoon.Unity
         };
         [SerializeField] private float rotationJitter = 18f;
         [SerializeField] private float scaleJitter = 0.12f;
+        [Tooltip("Per-member scatter off the grid, as a fraction of spacing. 0 = the old rigid lattice.")]
+        [SerializeField] private float positionJitter = 0.3f;
+        [Tooltip("How much wider each row's gap gets further from the stage. 0 = uniform rows.")]
+        [SerializeField] private float rowSpacingFalloff = 0.06f;
+        [Tooltip("Seconds of delay per row, so the pop travels back from the stage. 0 = every row pops at once (the pre-M5f behaviour).")]
+        [SerializeField] private float waveRowDelay = 0.035f;
+        [Tooltip("Rows past this all pop together with the last delayed row, so a big pit never lags the music.")]
+        [SerializeField] private int waveMaxRows = 8;
         [Tooltip("Translucent material for ghost-preview members (wired by Build Upgrade Preview).")]
         [SerializeField] private Material ghostMaterial;
 
@@ -48,7 +56,8 @@ namespace PitTycoon.Unity
         private Transform[] _members;
         private float[] _fullScale;   // per-member uniform scale (with jitter)
         private float[] _curScale;    // per-member 0..1 scale-in progress
-        private float _pop;
+        private float _beatTime = -999f;   // Time.time of the beat that started the current wave
+        private float _beatStrength;
         private bool _live;
         private readonly System.Collections.Generic.List<GameObject> _ghosts =
             new System.Collections.Generic.List<GameObject>();
@@ -58,6 +67,7 @@ namespace PitTycoon.Unity
         private static readonly int DanceState = Animator.StringToHash("Dance");
         private static readonly int BaseColorProp = Shader.PropertyToID("_BaseColor");
         private float[] _popJitter;  // per-member beat-pop height factor, so hops aren't a unison wave
+        private float[] _popHeight;  // per-member current pop height, decays and is re-raised by the wave
 
         /// <summary>ICrowdMeter: how full the pit is, 0..1.</summary>
         public float FillFraction => _fill?.FillFraction ?? 0f;
@@ -102,13 +112,22 @@ namespace PitTycoon.Unity
 
         private void OnBeat(BeatInfo beat)
         {
-            _pop = Mathf.Max(_pop, beatPop * Mathf.Clamp01(0.4f + beat.Strength));
+            TriggerWave(beatPop * Mathf.Clamp01(0.4f + beat.Strength));
         }
 
         /// <summary>One-shot crowd jolt (an ability fired). Visible on the next Update.</summary>
         public void Pop(float strength)
         {
-            _pop = Mathf.Max(_pop, strength);
+            TriggerWave(strength);
+        }
+
+        /// <summary>Start a new pop wave at the barrier. Members already lifted by an earlier wave
+        /// keep decaying from where they are until this one reaches them, so a retrigger never
+        /// drops anyone to the ground — see the decaying-max in Update.</summary>
+        private void TriggerWave(float strength)
+        {
+            _beatTime = Time.time;
+            _beatStrength = strength;
         }
 
         /// <summary>Grounds upgrade: raise capacity, then rebuild so the new (empty) room shows.</summary>
@@ -123,6 +142,7 @@ namespace PitTycoon.Unity
         /// scale, the rest hidden at scale 0 (no flicker on rebuild).</summary>
         public void Build()
         {
+            int cols = Mathf.Max(1, columns);
             ClearPreview();
             if (_fill == null) _fill = new CrowdFill(startingCapacity, startingFollowing);
 
@@ -136,32 +156,27 @@ namespace PitTycoon.Unity
             _curScale = new float[n];
             _animators = new Animator[n];
             _popJitter = new float[n];
+            _popHeight = new float[n];
 
-            int startRows = Mathf.CeilToInt((float)startingCapacity / columns);
-            float frontZ = (startRows - 1) * spacing * 0.5f;   // front row fixed near the stage
-            float offsetX = (columns - 1) * spacing * 0.5f;
+            var layout = LayoutSettings();
 
             for (int i = 0; i < n; i++)
             {
-                int row = i / columns;                          // row 0 = front (near stage)
-                int col = i % columns;
+                var slot = CrowdLayout.Slot(i, layout);
 
-                GameObject go = SpawnMember();
-                _animators[i] = StyleMember(go);
+                GameObject go = SpawnMember(i);
+                _animators[i] = StyleMember(go, i);
 
-                go.name = $"Crowd_{row}_{col}";
+                go.name = $"Crowd_{i / cols}_{i % cols}";
                 go.transform.SetParent(transform, false);
-                go.transform.localPosition = new Vector3(
-                    col * spacing - offsetX, 0f, frontZ - row * spacing);
-                go.transform.localRotation = Quaternion.Euler(
-                    0f, Random.Range(-rotationJitter, rotationJitter), 0f);
+                go.transform.localPosition = new Vector3(slot.X, 0f, slot.Z);
+                go.transform.localRotation = Quaternion.Euler(0f, slot.RotationY, 0f);
 
-                _popJitter[i] = Random.Range(0.55f, 1.2f);
-                float full = 1f + Random.Range(-scaleJitter, scaleJitter);
+                _popJitter[i] = slot.PopScale;
                 float cur = (i < active) ? 1f : 0f;             // active members appear immediately
-                _fullScale[i] = full;
+                _fullScale[i] = slot.Scale;
                 _curScale[i] = cur;
-                go.transform.localScale = Vector3.one * (full * cur);
+                go.transform.localScale = Vector3.one * (slot.Scale * cur);
                 _members[i] = go.transform;
             }
         }
@@ -175,27 +190,26 @@ namespace PitTycoon.Unity
 
             int from = _fill.Capacity;
             int to = from + delta;
+            int cols = Mathf.Max(1, columns);
 
-            int startRows = Mathf.CeilToInt((float)startingCapacity / columns);
-            float frontZ = (startRows - 1) * spacing * 0.5f;
-            float offsetX = (columns - 1) * spacing * 0.5f;
+            var layout = LayoutSettings();
 
             for (int i = from; i < to; i++)
             {
-                int row = i / columns;
-                int col = i % columns;
+                var slot = CrowdLayout.Slot(i, layout);
 
-                GameObject go = SpawnMember();
+                GameObject go = SpawnMember(i);
                 var ghostAnim = go.GetComponentInChildren<Animator>();
                 if (ghostAnim != null) Destroy(ghostAnim);
-                go.name = $"GhostCrowd_{row}_{col}";
+                go.name = $"GhostCrowd_{i / cols}_{i % cols}";
                 foreach (var c in go.GetComponentsInChildren<Collider>()) Destroy(c);
                 if (ghostMaterial != null)
                     foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = ghostMaterial;
 
                 go.transform.SetParent(transform, false);
-                go.transform.localPosition = new Vector3(col * spacing - offsetX, 0f, frontZ - row * spacing);
-                go.transform.localScale = Vector3.one;
+                go.transform.localPosition = new Vector3(slot.X, 0f, slot.Z);
+                go.transform.localRotation = Quaternion.Euler(0f, slot.RotationY, 0f);
+                go.transform.localScale = Vector3.one * slot.Scale;
                 _ghosts.Add(go);
             }
         }
@@ -208,12 +222,30 @@ namespace PitTycoon.Unity
             _ghosts.Clear();
         }
 
-        /// <summary>Instantiate a random body variant, or the capsule fallback when none are wired.</summary>
-        private GameObject SpawnMember()
+        /// <summary>Layout parameters for CrowdLayout. Shared by Build and PreviewCapacity so a
+        /// ghost lands exactly where its real member will.</summary>
+        private CrowdLayoutSettings LayoutSettings()
+        {
+            int startRows = Mathf.CeilToInt((float)startingCapacity / Mathf.Max(1, columns));
+            return new CrowdLayoutSettings(columns, spacing, startRows,
+                positionJitter, rowSpacingFalloff, rotationJitter, scaleJitter);
+        }
+
+        /// <summary>The row index the wave uses for a member: the real row, capped, so traverse time
+        /// stays bounded as capacity grows instead of the back of the pit popping a beat late.</summary>
+        private int WaveRow(int index)
+        {
+            int row = index / Mathf.Max(1, columns);
+            return row > waveMaxRows ? waveMaxRows : row;
+        }
+
+        /// <summary>Instantiate this member's body variant, or the capsule fallback when none are
+        /// wired. The variant is index-derived, so a rebuild does not re-roll everyone's body.</summary>
+        private GameObject SpawnMember(int index)
         {
             if (memberPrefabs != null && memberPrefabs.Length > 0)
             {
-                var prefab = memberPrefabs[Random.Range(0, memberPrefabs.Length)];
+                var prefab = memberPrefabs[CrowdLayout.VariantIndex(index, memberPrefabs.Length)];
                 if (prefab != null) return Instantiate(prefab);
             }
             var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -225,13 +257,15 @@ namespace PitTycoon.Unity
             return go;
         }
 
-        /// <summary>Random outfit tint + desynced animator start (offset + speed jitter).</summary>
-        private Animator StyleMember(GameObject go)
+        /// <summary>Index-derived outfit tint (stable across rebuilds) plus a desynced animator
+        /// start. The animator offset stays random on purpose: its phase drifts anyway, so
+        /// re-rolling it on a rebuild is invisible.</summary>
+        private Animator StyleMember(GameObject go, int index)
         {
             if (outfitPalette != null && outfitPalette.Length > 0)
             {
                 var mpb = new MaterialPropertyBlock();
-                mpb.SetColor(BaseColorProp, outfitPalette[Random.Range(0, outfitPalette.Length)]);
+                mpb.SetColor(BaseColorProp, outfitPalette[CrowdLayout.OutfitIndex(index, outfitPalette.Length)]);
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(mpb);
             }
             var anim = go.GetComponentInChildren<Animator>();
@@ -250,8 +284,6 @@ namespace PitTycoon.Unity
         {
             if (_analyzer == null || _members == null || _fill == null) return;
 
-            _pop = Mathf.MoveTowards(_pop, 0f, popDecayPerSecond * Time.deltaTime);
-
             if (_live && _hype != null)                         // fill only advances during a set
                 _fill.Tick(_hype.HypeFraction);
 
@@ -262,6 +294,8 @@ namespace PitTycoon.Unity
             // direct music reactivity.
             float energy = _hype != null ? _hype.HypeFraction : _analyzer.Intensity01;
 
+            float sinceBeat = Time.time - _beatTime;
+            float decayStep = popDecayPerSecond * Time.deltaTime;
             for (int i = 0; i < _members.Length; i++)
             {
                 Transform tr = _members[i];
@@ -275,7 +309,16 @@ namespace PitTycoon.Unity
                 bool visible = _curScale[i] > 0.05f;
                 Vector3 p = tr.localPosition;
                 float jitter = _popJitter != null && i < _popJitter.Length ? _popJitter[i] : 1f;
-                p.y = visible ? _pop * jitter : 0f;     // clips own body motion; beat pops lift the root
+                // Decaying max: each member falls at popDecayPerSecond and is re-raised when the
+                // wave reaches its row. A new beat therefore cannot drop anyone — rows the wave
+                // has not reached yet simply keep falling from where they were. This carries any
+                // number of overlapping waves with one slot of wave state.
+                float incoming = CrowdLayout.PopHeight(WaveRow(i), sinceBeat, _beatStrength,
+                    waveRowDelay, popDecayPerSecond);
+                float decayed = _popHeight[i] - decayStep;
+                if (decayed < 0f) decayed = 0f;
+                _popHeight[i] = incoming > decayed ? incoming : decayed;
+                p.y = visible ? _popHeight[i] * jitter : 0f;
                 tr.localPosition = p;
 
                 var anim = _animators != null && i < _animators.Length ? _animators[i] : null;

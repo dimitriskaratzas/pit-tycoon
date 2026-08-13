@@ -427,3 +427,48 @@ features from M2a must already be on `PC_Renderer.asset` (unchanged by this mile
   at `8` after, so the old `0.6` step had become a ~7.5% change per level and read as nothing.
 - `ComicLook.asset` volume profile: bloom, colour grading, and vignette will likely want
   re-balancing now that the scene is darker and the beams are additive.
+
+## M5f — Crowd Layout & Beat Wave
+
+Breaks the pit out of its grid and makes beat pops travel back through the crowd instead of
+firing everywhere at once.
+
+### Build steps
+
+None. This milestone is pure code — no builder run and no new assets. Unity recompiles on
+focus and the change is live in Play mode.
+
+### Verification
+
+- The pit no longer reads as a lattice: members sit off-axis, denser at the barrier and
+  thinner toward the back.
+- A beat pop visibly travels backward from the stage. Set `waveRowDelay` to 0 to get the old
+  everyone-at-once behaviour for comparison.
+- Firing an ability sends the same travelling pulse.
+- Buying a capacity (Grounds) upgrade adds new members **without** the existing crowd
+  resettling — no jumping, no bodies changing shape, no shirts changing colour.
+- Ghost preview members stand exactly where the real members appear after purchase, at the
+  same rotation and scale.
+
+### Tuning knobs
+
+All on `CrowdController` in the scene, live in Play mode:
+
+- `positionJitter` — scatter off the grid, as a fraction of `spacing`. 0 removes the scatter, but
+  rows stay unevenly spaced until `rowSpacingFalloff` is zeroed too — the two knobs are
+  independent. Set **both** to 0 to get the exact pre-M5f lattice back for comparison.
+- `rowSpacingFalloff` — how much wider each row's gap gets further from the stage. 0 = uniform.
+- `waveRowDelay` — seconds of delay per row. Higher travels slower and reads more like a wave;
+  0 fires the whole pit at once.
+- `waveMaxRows` — rows past this pop together with the last delayed row, so a large pit never
+  lags the music.
+- Existing: `spacing`, `columns`, `rotationJitter`, `scaleJitter`, `beatPop`, and
+  `popDecayPerSecond` (how fast the pop fades once the wave reaches a row).
+
+Placement is derived from each member's index, not drawn randomly, so the crowd is stable
+across rebuilds and ghost previews match what you get. Changing `columns`, `spacing`,
+`positionJitter`, or `rowSpacingFalloff` re-derives every position — that is expected.
+Note that re-derivation only happens on the next rebuild (a capacity purchase, or entering
+Play mode): `columns` and `spacing` do not move existing bodies until then, unlike
+`waveRowDelay`, `popDecayPerSecond`, and `scaleInPerSecond` (read every frame) and `beatPop`
+(read on each detected beat), all of which change behaviour immediately.
