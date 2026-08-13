@@ -126,6 +126,10 @@ namespace PitTycoon.Unity
         /// so the whole pit would snap to the ground on each retrigger and then re-rise.</summary>
         private void TriggerWave(float strength)
         {
+            // Two deep on purpose: a third trigger discards the oldest wave. That only matters if
+            // three land inside roughly one wave's lifetime (~strength/popDecayPerSecond seconds),
+            // faster than normal beat cadence, and the worst case is a small dip toward the
+            // second-newest wave — never the snap to zero that one slot produced.
             _prevBeatTime = _beatTime;
             _prevBeatStrength = _beatStrength;
             _beatTime = Time.time;

@@ -468,5 +468,5 @@ across rebuilds and ghost previews match what you get. Changing `columns`, `spac
 `positionJitter`, or `rowSpacingFalloff` re-derives every position — that is expected.
 Note that re-derivation only happens on the next rebuild (a capacity purchase, or entering
 Play mode): `columns` and `spacing` do not move existing bodies until then, unlike
-`waveRowDelay`, `popDecayPerSecond`, `beatPop`, and `scaleInPerSecond`, which are read every
-frame and change behaviour immediately.
+`waveRowDelay`, `popDecayPerSecond`, and `scaleInPerSecond` (read every frame) and `beatPop`
+(read on each detected beat), all of which change behaviour immediately.
