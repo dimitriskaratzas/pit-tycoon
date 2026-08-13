@@ -56,6 +56,8 @@ namespace PitTycoon.Unity
         private float[] _curScale;    // per-member 0..1 scale-in progress
         private float _beatTime = -999f;   // Time.time of the beat that started the current wave
         private float _beatStrength;
+        private float _prevBeatTime = -999f;
+        private float _prevBeatStrength;
         private bool _live;
         private readonly System.Collections.Generic.List<GameObject> _ghosts =
             new System.Collections.Generic.List<GameObject>();
@@ -118,14 +120,16 @@ namespace PitTycoon.Unity
             TriggerWave(strength);
         }
 
-        /// <summary>Start a new pop wave at the barrier. Never dips an in-flight wave: a weak
-        /// beat landing mid-wave keeps whatever height the front row still had.</summary>
+        /// <summary>Start a new pop wave at the barrier, keeping the in-flight one alive beside it.
+        /// Replacing it outright would reset secondsSinceBeat to 0, which makes PopHeight return 0
+        /// for every row the old wave had already reached — their arrival is back in the future —
+        /// so the whole pit would snap to the ground on each retrigger and then re-rise.</summary>
         private void TriggerWave(float strength)
         {
-            float residual = CrowdLayout.PopHeight(0, Time.time - _beatTime, _beatStrength,
-                waveRowDelay, popDecayPerSecond);
-            _beatStrength = Mathf.Max(residual, strength);
+            _prevBeatTime = _beatTime;
+            _prevBeatStrength = _beatStrength;
             _beatTime = Time.time;
+            _beatStrength = strength;
         }
 
         /// <summary>Grounds upgrade: raise capacity, then rebuild so the new (empty) room shows.</summary>
@@ -282,6 +286,7 @@ namespace PitTycoon.Unity
             float energy = _hype != null ? _hype.HypeFraction : _analyzer.Intensity01;
 
             float sinceBeat = Time.time - _beatTime;
+            float sincePrevBeat = Time.time - _prevBeatTime;
             for (int i = 0; i < _members.Length; i++)
             {
                 Transform tr = _members[i];
@@ -299,6 +304,9 @@ namespace PitTycoon.Unity
                 // firing on every member in the same frame. Clips own body motion; lifts the root.
                 float wave = CrowdLayout.PopHeight(i / columns, sinceBeat, _beatStrength,
                     waveRowDelay, popDecayPerSecond);
+                float prevWave = CrowdLayout.PopHeight(i / columns, sincePrevBeat, _prevBeatStrength,
+                    waveRowDelay, popDecayPerSecond);
+                if (prevWave > wave) wave = prevWave;
                 p.y = visible ? wave * jitter : 0f;
                 tr.localPosition = p;
 

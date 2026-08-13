@@ -601,6 +601,8 @@ Replace the `private float _pop;` field with:
 ```csharp
         private float _beatTime = -999f;   // Time.time of the beat that started the current wave
         private float _beatStrength;
+        private float _prevBeatTime = -999f;
+        private float _prevBeatStrength;
 ```
 
 - [ ] **Step 2: Retrigger the wave from beats and abilities**
@@ -619,14 +621,16 @@ Replace `OnBeat` and `Pop` with:
             TriggerWave(strength);
         }
 
-        /// <summary>Start a new pop wave at the barrier. Never dips an in-flight wave: a weak
-        /// beat landing mid-wave keeps whatever height the front row still had.</summary>
+        /// <summary>Start a new pop wave at the barrier, keeping the in-flight one alive beside it.
+        /// Replacing it outright would reset secondsSinceBeat to 0, which makes PopHeight return 0
+        /// for every row the old wave had already reached — their arrival is back in the future —
+        /// so the whole pit would snap to the ground on each retrigger and then re-rise.</summary>
         private void TriggerWave(float strength)
         {
-            float residual = CrowdLayout.PopHeight(0, Time.time - _beatTime, _beatStrength,
-                waveRowDelay, popDecayPerSecond);
-            _beatStrength = Mathf.Max(residual, strength);
+            _prevBeatTime = _beatTime;
+            _prevBeatStrength = _beatStrength;
             _beatTime = Time.time;
+            _beatStrength = strength;
         }
 ```
 
@@ -642,6 +646,7 @@ Add this immediately before the `for` loop over members:
 
 ```csharp
             float sinceBeat = Time.time - _beatTime;
+            float sincePrevBeat = Time.time - _prevBeatTime;
 ```
 
 Then replace the three lines inside the loop that compute the member's Y:
@@ -664,6 +669,9 @@ with:
                 // firing on every member in the same frame. Clips own body motion; lifts the root.
                 float wave = CrowdLayout.PopHeight(i / columns, sinceBeat, _beatStrength,
                     waveRowDelay, popDecayPerSecond);
+                float prevWave = CrowdLayout.PopHeight(i / columns, sincePrevBeat, _prevBeatStrength,
+                    waveRowDelay, popDecayPerSecond);
+                if (prevWave > wave) wave = prevWave;
                 p.y = visible ? wave * jitter : 0f;
                 tr.localPosition = p;
 ```

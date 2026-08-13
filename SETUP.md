@@ -466,3 +466,7 @@ All on `CrowdController` in the scene, live in Play mode:
 Placement is derived from each member's index, not drawn randomly, so the crowd is stable
 across rebuilds and ghost previews match what you get. Changing `columns`, `spacing`,
 `positionJitter`, or `rowSpacingFalloff` re-derives every position — that is expected.
+Note that re-derivation only happens on the next rebuild (a capacity purchase, or entering
+Play mode): `columns` and `spacing` do not move existing bodies until then, unlike
+`waveRowDelay`, `popDecayPerSecond`, `beatPop`, and `scaleInPerSecond`, which are read every
+frame and change behaviour immediately.
