@@ -704,8 +704,9 @@ focus and the change is live in Play mode.
 
 All on `CrowdController` in the scene, live in Play mode:
 
-- `positionJitter` — scatter off the grid, as a fraction of `spacing`. 0 restores the old rigid
-  lattice, which is the quickest way to see what this milestone changed.
+- `positionJitter` — scatter off the grid, as a fraction of `spacing`. 0 removes the scatter, but
+  rows stay unevenly spaced until `rowSpacingFalloff` is zeroed too — the two knobs are
+  independent. Set **both** to 0 to get the exact pre-M5f lattice back for comparison.
 - `rowSpacingFalloff` — how much wider each row's gap gets further from the stage. 0 = uniform.
 - `waveRowDelay` — seconds of delay per row. Higher travels slower and reads more like a wave;
   0 fires the whole pit at once.
